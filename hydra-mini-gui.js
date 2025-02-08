@@ -101,19 +101,36 @@
                         let startline = pos.line;
                         let endline = pos.line;
                         
-                        // Search backwards for the start of the block
-                        while (startline > 0 && cm.getLine(startline) !== '') {
+                        // Search backwards for the start of the block (empty line or start of document)
+                        while (startline > 0) {
+                            const line = cm.getLine(startline - 1);
+                            if (line === undefined || line.trim() === '') {
+                                break;
+                            }
                             startline--;
                         }
                         
-                        // Search forwards for the end of the block
-                        while (endline < cm.lineCount() && cm.getLine(endline) !== '') {
+                        // Search forwards for the end of the block (empty line or end of document)
+                        while (endline < cm.lineCount() - 1) {
+                            const line = cm.getLine(endline + 1);
+                            if (line === undefined || line.trim() === '') {
+                                break;
+                            }
                             endline++;
                         }
+                        
+                        // Include the current line
+                        endline++;
                         
                         const pos1 = { line: startline, ch: 0 };
                         const pos2 = { line: endline, ch: 0 };
                         const str = cm.getRange(pos1, pos2);
+                        
+                        console.log('Found block:', {
+                            start: pos1,
+                            end: pos2,
+                            text: str
+                        });
                         
                         return {
                             start: pos1,
@@ -281,44 +298,50 @@
             const matches = [];
             let match;
             
-            console.log('Finding numbers in code:');
+            console.log('%c Finding numbers in code:', 'background: #222; color: #bada55');
             console.log(code);
             
             // Split the code into lines to track line numbers
             const lines = code.split('\n');
             let currentPos = 0;
 
-            // Only process lines within the last eval range if it exists
-            const startLine = this.lastEvalRange?.start?.line ?? 0;
-            const endLine = this.lastEvalRange?.end?.line ?? lines.length;
-            
+            // Process all lines in the current code
             lines.forEach((line, lineNum) => {
-                // Skip lines outside our range
-                if (lineNum < startLine || lineNum >= endLine) {
-                    currentPos += line.length + 1; // Still need to track position
-                    return;
-                }
-
-                console.log(`Scanning line ${lineNum}: "${line}"`);
+                console.log(`\n%c Scanning line ${lineNum}: "${line}"`, 'color: #6495ED');
                 while ((match = numberRegex.exec(line)) !== null) {
-                    // For the first line, check if the number is after the start character
-                    if (lineNum === startLine && match.index < (this.lastEvalRange?.start?.ch ?? 0)) {
-                        continue;
-                    }
-                    // For the last line, check if the number is before the end character
-                    if (lineNum === endLine - 1 && match.index >= (this.lastEvalRange?.end?.ch ?? line.length)) {
+                    // Skip numbers in loadScript lines
+                    if (line.includes('loadScript')) {
                         continue;
                     }
 
                     const value = parseFloat(match[0]);
-                    console.log(`Found number ${value} at:`, {
+                    const beforeNumber = line.substring(Math.max(0, match.index - 20), match.index);
+                    const afterNumber = line.substring(match.index + match[0].length, match.index + match[0].length + 20);
+                    
+                    // Find function calls before this number
+                    const functionCalls = [...beforeNumber.matchAll(/\.?([a-zA-Z]+)\s*\(/g)];
+                    const lastFunction = functionCalls[functionCalls.length - 1];
+                    const functionName = lastFunction ? lastFunction[1] : 'unknown';
+                    
+                    // Count parameters
+                    let paramCount = 0;
+                    if (lastFunction) {
+                        const functionStart = lastFunction.index + lastFunction[0].length;
+                        const textAfterFunction = beforeNumber.slice(functionStart);
+                        paramCount = (textAfterFunction.match(/,/g) || []).length;
+                    }
+
+                    console.log(`%c Found number ${value} in function "${functionName}" as parameter ${paramCount}:`, 'color: #FFA500', {
                         lineNumber: lineNum,
                         characterPosition: match.index,
                         length: match[0].length,
                         absolutePosition: currentPos + match.index,
                         lineContent: line,
-                        beforeNumber: line.substring(Math.max(0, match.index - 20), match.index),
-                        afterNumber: line.substring(match.index + match[0].length, match.index + match[0].length + 20)
+                        beforeNumber,
+                        afterNumber,
+                        functionCalls,
+                        lastFunction: functionName,
+                        parameterIndex: paramCount
                     });
                     
                     matches.push({
@@ -332,7 +355,7 @@
                 currentPos += line.length + 1; // +1 for the newline
             });
             
-            console.log('All matches:', matches);
+            console.log('\n%c All matches:', 'background: #222; color: #bada55', matches);
             return matches;
         }
 
@@ -370,34 +393,85 @@
                 // Add a placeholder if no numbers found
                 this.gui.add({ message: 'No numbers in current code' }, 'message').disable();
             } else {
-                // Group numbers by their transform
-                const transformGroups = new Map(); // Map of transform name -> array of {value, index, paramName}
+                // Group numbers by their function and line number
+                const functionGroups = new Map(); // Map of functionId -> array of {value, index, paramName}
                 const values = {};
+                let currentFunctionId = null;
+                let currentParams = [];
+                let lastLineNumber = -1;
                 
                 numbers.forEach((num, i) => {
                     const name = `value${i}`;
                     values[name] = num.value;
                     
-                    // Get transform info
-                    const paramInfo = this.guessParameter(this.currentCode, num.index);
-                    const [transformName, paramName] = paramInfo.split('.');
+                    // Get the line content before the number to find the function
+                    const line = this.currentCode.split('\n')[num.lineNumber];
+                    const beforeNumber = line.substring(0, num.ch);
                     
-                    if (!transformGroups.has(transformName)) {
-                        transformGroups.set(transformName, []);
+                    // Find all function calls in the chain up to this number
+                    const functionCalls = [...beforeNumber.matchAll(/\.?([a-zA-Z]+)\s*\(/g)];
+                    // Get the last function call before this number
+                    const lastFunction = functionCalls[functionCalls.length - 1];
+                    const functionName = lastFunction ? lastFunction[1] : 'unknown';
+                    
+                    // Count parameters for this specific function call
+                    let paramCount = 0;
+                    if (lastFunction) {
+                        const functionStart = lastFunction.index + lastFunction[0].length;
+                        const textAfterFunction = beforeNumber.slice(functionStart);
+                        // Count commas before our number to determine which parameter we are
+                        paramCount = (textAfterFunction.match(/,/g) || []).length;
                     }
-                    transformGroups.get(transformName).push({
+                    
+                    // Create a unique ID for this function instance based on line number AND character position
+                    const functionPosition = lastFunction ? lastFunction.index : 0;
+                    const functionId = `${functionName}_line${num.lineNumber}_pos${functionPosition}`;
+                    
+                    // Get transform info for parameter name
+                    const transform = this.hydra?.generator?.glslTransforms?.[functionName];
+                    const paramName = transform?.inputs?.[paramCount]?.name || `val${paramCount + 1}`;
+                    
+                    // Add to the function group
+                    if (!functionGroups.has(functionId)) {
+                        functionGroups.set(functionId, {
+                            name: functionName,
+                            line: num.lineNumber,
+                            position: functionPosition,
+                            params: []
+                        });
+                    }
+                    functionGroups.get(functionId).params.push({
                         value: num.value,
                         index: i,
                         paramName,
-                        controlName: name
+                        controlName: name,
+                        paramCount
                     });
                 });
 
-                // Create folders for each transform
-                for (const [transformName, params] of transformGroups) {
-                    const folder = this.gui.addFolder(transformName);
+                // Sort function groups by line number and then by position within the line
+                const sortedGroups = Array.from(functionGroups.entries())
+                    .sort(([, a], [, b]) => {
+                        if (a.line !== b.line) {
+                            return a.line - b.line;
+                        }
+                        return a.position - b.position;
+                    });
+
+                // Create folders for each function instance
+                let instanceCounts = new Map(); // Track instances of each function name
+                for (const [functionId, group] of sortedGroups) {
+                    // Create a display name with instance number if needed
+                    const count = instanceCounts.get(group.name) || 0;
+                    const displayName = count === 0 ? group.name : `${group.name} ${count + 1}`;
+                    instanceCounts.set(group.name, count + 1);
                     
-                    params.forEach(param => {
+                    const folder = this.gui.addFolder(displayName);
+                    
+                    // Sort parameters by their position in the function call
+                    group.params.sort((a, b) => a.paramCount - b.paramCount);
+                    
+                    group.params.forEach(param => {
                         const controller = folder.add(values, param.controlName)
                             .name(param.paramName)
                             .onChange((value) => {
