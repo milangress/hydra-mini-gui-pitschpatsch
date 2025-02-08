@@ -1,7 +1,7 @@
 // Value updating functionality with AST parsing
 import { Parser } from 'acorn';
-import { generate } from 'astring';
-import { defaultTraveler, attachComments, makeTraveler } from 'astravel';
+import { generate, GENERATOR } from 'astring';
+import { attachComments, makeTraveler } from 'astravel';
 
 export class ValueUpdater {
     constructor(hydra) {
@@ -10,10 +10,14 @@ export class ValueUpdater {
         this._updateTimeout = null;
         this._pendingChanges = [];
         this._undoGroup = null;
+        this.valuePositions = null;
     }
 
     updateValue(index, newValue, valuePositions, lastEvalRange, currentCode) {
         if (!window.cm || !lastEvalRange) return;
+
+        // Store valuePositions for reference
+        this.valuePositions = valuePositions;
 
         // Add change to pending changes
         this._pendingChanges.push({
@@ -73,11 +77,12 @@ export class ValueUpdater {
 
     _generateCodeWithChanges(code) {
         try {
-            // Parse to AST
+            // Parse to AST with explicit ecmaVersion
             const comments = [];
             const ast = Parser.parse(code, {
                 locations: true,
-                onComment: comments
+                onComment: comments,
+                ecmaVersion: 2022  // Explicitly set ecmaVersion
             });
 
             // Create a map of positions to new values
@@ -94,7 +99,6 @@ export class ValueUpdater {
                         const newValue = state.valueMap.get(state.currentIndex);
                         
                         if (node.type === 'UnaryExpression' && node.operator === '-' && node.argument.type === 'Literal') {
-                            console.log('found negative number', newValue);
                             // We found a negative number
                             if (newValue < 0) {
                                 // Keep it negative, just update the value
@@ -110,7 +114,6 @@ export class ValueUpdater {
                             }
                             state.currentIndex++;
                         } else if (node.type === 'Literal' && typeof node.value === 'number') {
-                            console.log('found positive number', newValue);
                             // We found a positive number
                             if (newValue < 0) {
                                 // Convert to negative (UnaryExpression)
@@ -166,8 +169,14 @@ export class ValueUpdater {
             // Put comments back
             attachComments(ast, comments);
 
-            // Generate new code
-            return generate(ast, { comments: true });
+            // Generate new code with preserved formatting
+            const generatedCode = generate(ast, {
+                generator: GENERATOR,
+                comments: true,
+                indent: '  '  // Use two spaces for indentation
+            });
+
+            return generatedCode;
         } catch (error) {
             console.error('Error generating code:', error);
             return null;
