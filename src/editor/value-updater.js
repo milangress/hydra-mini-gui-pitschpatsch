@@ -89,14 +89,74 @@ export class ValueUpdater {
             // Create AST traveler to update values
             const traveler = makeTraveler({
                 go: function(node, state) {
-                    if (node.type === 'Literal' && typeof node.value === 'number') {
-                        if (state.valueMap.has(state.currentIndex)) {
-                            node.value = state.valueMap.get(state.currentIndex);
-                            node.raw = String(node.value);
+                    // Handle both literal numbers and unary expressions (negative numbers)
+                    if (state.valueMap.has(state.currentIndex)) {
+                        const newValue = state.valueMap.get(state.currentIndex);
+                        
+                        if (node.type === 'UnaryExpression' && node.operator === '-' && node.argument.type === 'Literal') {
+                            console.log('found negative number', newValue);
+                            // We found a negative number
+                            if (newValue < 0) {
+                                // Keep it negative, just update the value
+                                node.argument.value = Math.abs(newValue);
+                                node.argument.raw = this._formatNumber(Math.abs(newValue));
+                            } else {
+                                // Convert to positive literal
+                                Object.assign(node, {
+                                    type: 'Literal',
+                                    value: newValue,
+                                    raw: this._formatNumber(newValue)
+                                });
+                            }
+                            state.currentIndex++;
+                        } else if (node.type === 'Literal' && typeof node.value === 'number') {
+                            console.log('found positive number', newValue);
+                            // We found a positive number
+                            if (newValue < 0) {
+                                // Convert to negative (UnaryExpression)
+                                Object.assign(node, {
+                                    type: 'UnaryExpression',
+                                    operator: '-',
+                                    prefix: true,
+                                    argument: {
+                                        type: 'Literal',
+                                        value: Math.abs(newValue),
+                                        raw: this._formatNumber(Math.abs(newValue))
+                                    }
+                                });
+                            } else {
+                                // Keep as positive literal
+                                node.value = newValue;
+                                node.raw = this._formatNumber(newValue);
+                            }
+                            state.currentIndex++;
                         }
+                    } else if ((node.type === 'Literal' && typeof node.value === 'number') ||
+                             (node.type === 'UnaryExpression' && node.operator === '-' && node.argument.type === 'Literal')) {
                         state.currentIndex++;
                     }
+                    
                     this.super.go.call(this, node, state);
+                },
+                _formatNumber(num) {
+                    // Handle special cases
+                    if (Number.isNaN(num)) return 'NaN';
+                    if (!Number.isFinite(num)) return num > 0 ? 'Infinity' : '-Infinity';
+                    
+                    // Convert to string with proper precision
+                    let str = '';
+                    if (Math.abs(num) < 1) {
+                        // For small numbers, use more precision
+                        str = num.toFixed(3).replace(/\.?0+$/, '');
+                    } else if (Math.abs(num) < 10) {
+                        // For medium numbers, use less precision
+                        str = num.toFixed(2).replace(/\.?0+$/, '');
+                    } else {
+                        // For large numbers, use no decimal places
+                        str = Math.round(num).toString();
+                    }
+                    
+                    return str;
                 }
             });
 
