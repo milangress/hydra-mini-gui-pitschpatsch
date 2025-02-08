@@ -4,8 +4,7 @@
 import { getHydra, waitForGUI } from './utils/hydra-utils.js';
 import { hookIntoEval, hookIntoHydraEditor } from './editor/editor-integration.js';
 import { GUIManager } from './gui/gui-manager.js';
-import { findNumbers } from './utils/number-finder.js';
-import { ValueUpdater } from './editor/value-updater.js';
+import { CodeValueManager } from './editor/code-value-manager.js';
 
 export class HydraMiniGUI {
     constructor() {
@@ -15,15 +14,15 @@ export class HydraMiniGUI {
             return window._hydraGui;
         }
 
-        this.hydra = getHydra(); // Get hydra instance here
+        this.hydra = getHydra();
         this.currentCode = "";
         this.currentEvalCode = ""; // Store the current state for evaluation
         this.valuePositions = [];
         this.lastEvalRange = null; // Track the last evaluated code range
-        this.isUpdating = false; // Add flag to prevent recursive updates
-        this._updateTimeout = null; // Add debounce timer
+        this.isUpdating = false;
+        this._updateTimeout = null;
         this.guiManager = new GUIManager(this.hydra);
-        this.valueUpdater = new ValueUpdater(this.hydra);
+        this.codeManager = new CodeValueManager(this.hydra);
         this.guiManager.setupGUI();
         hookIntoEval.call(this);
         hookIntoHydraEditor.call(this);
@@ -33,18 +32,17 @@ export class HydraMiniGUI {
     }
 
     updateGUI() {
-        this.valuePositions = findNumbers(this.currentCode);
+        this.valuePositions = this.codeManager.findValues(this.currentCode);
         this.guiManager.updateGUI(this.currentCode, this.valuePositions, this.updateValue.bind(this));
     }
 
     updateValue(index, newValue) {
         // Update both editor and evaluation immediately
-        this.valueUpdater.updateValue(
+        this.codeManager.updateValue(
             index,
             newValue,
             this.valuePositions,
-            this.lastEvalRange,
-            this.currentCode
+            this.lastEvalRange
         );
 
         // Update our current code to match the new state
