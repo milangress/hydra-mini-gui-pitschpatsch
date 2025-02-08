@@ -1,0 +1,12 @@
+{
+  "name": "hydra-mini-gui",
+  "version": "1.0.0",
+  "description": "create a mini gui for hydra-synth",
+  "license": "ISC",
+  "author": "Milan Gress",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
