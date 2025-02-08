@@ -1,103 +1,116 @@
-// Value updating functionality
+// Value updating functionality with AST parsing
+import { Parser } from 'acorn';
+import { generate } from 'astring';
+import { defaultTraveler, attachComments, makeTraveler } from 'astravel';
 
 export class ValueUpdater {
     constructor(hydra) {
         this.hydra = hydra;
         this.isUpdating = false;
         this._updateTimeout = null;
+        this._pendingChanges = [];
+        this._undoGroup = null;
     }
 
     updateValue(index, newValue, valuePositions, lastEvalRange, currentCode) {
-        console.log('Updating value:', {
+        if (!window.cm || !lastEvalRange) return;
+
+        // Add change to pending changes
+        this._pendingChanges.push({
             index,
             newValue,
-            lastEvalRange
+            timestamp: Date.now()
         });
-
-        if (!window.cm || index >= valuePositions.length || !lastEvalRange) return;
-
-        const pos = valuePositions[index];
-        const cm = window.cm;
-
-        console.log('Number position info:', {
-            value: pos.value,
-            lineNumber: pos.lineNumber,
-            characterPosition: pos.ch,
-            length: pos.length,
-            absolutePosition: pos.index,
-            lineContent: cm.getLine(pos.lineNumber + lastEvalRange.start.line), // Adjust for block start
-            beforeNumber: cm.getLine(pos.lineNumber + lastEvalRange.start.line).substring(Math.max(0, pos.ch - 20), pos.ch),
-            afterNumber: cm.getLine(pos.lineNumber + lastEvalRange.start.line).substring(pos.ch + pos.length, pos.ch + pos.length + 20)
-        });
-
-        // Set the updating flag
-        this.isUpdating = true;
 
         try {
-            // Clear any pending editor updates
-            clearTimeout(this._updateTimeout);
+            const cm = window.cm;
+            const code = cm.getRange(lastEvalRange.start, lastEvalRange.end);
+            
+            // Generate new code with current changes
+            const newCode = this._generateCodeWithChanges(code);
+            if (!newCode) return;
 
-            // Get the code within our last eval range
-            const allLines = [];
-            for (let i = lastEvalRange.start.line; i < lastEvalRange.end.line; i++) {
-                const line = cm.getLine(i);
-                if (line && !line.includes('loadScript')) {
-                    if (i === (pos.lineNumber + lastEvalRange.start.line)) { // Adjust line number
-                        // This is the line we're updating
-                        allLines.push(
-                            line.substring(0, pos.ch) +
-                            String(newValue) +
-                            line.substring(pos.ch + pos.length)
-                        );
-                    } else {
-                        allLines.push(line);
-                    }
-                }
+            // Start or continue undo group
+            if (!this._undoGroup) {
+                cm.startOperation();
+                this._undoGroup = {
+                    lastUpdate: Date.now()
+                };
             }
 
-            // Join the lines into a single string
-            const currentEvalCode = allLines.join('\n');
+            // Update the editor immediately
+            cm.replaceRange(newCode, lastEvalRange.start, lastEvalRange.end);
+            
+            // Update lastUpdate time
+            this._undoGroup.lastUpdate = Date.now();
 
-            // Wrap the code in an async function
-            const wrappedCode = `(async() => {
-${currentEvalCode}
-})().catch(err => console.error(err))`;
+            // Schedule the end of the undo group
+            clearTimeout(this._updateTimeout);
+            this._updateTimeout = setTimeout(() => {
+                if (this._undoGroup) {
+                    cm.endOperation();
+                    this._undoGroup = null;
+                }
+                this._pendingChanges = [];
+            }, 2000);
 
-            console.log('Final code to evaluate:', wrappedCode);
-
-            // Evaluate but wait for animation frame to ensure DOM is updated
+            // Immediately evaluate for visual feedback
             if (this.hydra?.eval) {
                 requestAnimationFrame(() => {
-                    this.hydra.eval(wrappedCode);
+                    this.hydra.eval(newCode);
                 });
             }
 
-            // Debounce the editor update
-            this._updateTimeout = setTimeout(() => {
-                // Use the line number and character position directly
-                const from = {
-                    line: pos.lineNumber + lastEvalRange.start.line, // Adjust for block start
-                    ch: pos.ch
-                };
-                const to = {
-                    line: pos.lineNumber + lastEvalRange.start.line, // Adjust for block start
-                    ch: pos.ch + pos.length
-                };
+        } catch (error) {
+            console.error('Error updating value:', error);
+            // Clean up if there was an error
+            if (this._undoGroup) {
+                window.cm.endOperation();
+                this._undoGroup = null;
+            }
+        }
+    }
 
-                console.log('Updating editor:', {
-                    from,
-                    to,
-                    newValue
-                });
+    _generateCodeWithChanges(code) {
+        try {
+            // Parse to AST
+            const comments = [];
+            const ast = Parser.parse(code, {
+                locations: true,
+                onComment: comments
+            });
 
-                // Update the code in the editor
-                cm.replaceRange(String(newValue), from, to);
-            }, 1000); // 1 second debounce for editor updates
+            // Create a map of positions to new values
+            const valueMap = new Map();
+            this._pendingChanges.forEach(change => {
+                valueMap.set(change.index, change.newValue);
+            });
 
-            return currentEvalCode;
-        } finally {
-            // Always reset the updating flag
-            this.isUpdating = false;
+            // Create AST traveler to update values
+            const traveler = makeTraveler({
+                go: function(node, state) {
+                    if (node.type === 'Literal' && typeof node.value === 'number') {
+                        if (state.valueMap.has(state.currentIndex)) {
+                            node.value = state.valueMap.get(state.currentIndex);
+                            node.raw = String(node.value);
+                        }
+                        state.currentIndex++;
+                    }
+                    this.super.go.call(this, node, state);
+                }
+            });
+
+            // Update the AST
+            traveler.go(ast, { valueMap, currentIndex: 0 });
+
+            // Put comments back
+            attachComments(ast, comments);
+
+            // Generate new code
+            return generate(ast, { comments: true });
+        } catch (error) {
+            console.error('Error generating code:', error);
+            return null;
         }
     }
 } 

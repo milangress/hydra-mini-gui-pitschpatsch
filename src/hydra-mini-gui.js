@@ -9,6 +9,12 @@ import { ValueUpdater } from './editor/value-updater.js';
 
 export class HydraMiniGUI {
     constructor() {
+        // Ensure singleton instance
+        if (window._hydraGui) {
+            console.log('HydraMiniGUI instance already exists');
+            return window._hydraGui;
+        }
+
         this.hydra = getHydra(); // Get hydra instance here
         this.currentCode = "";
         this.currentEvalCode = ""; // Store the current state for evaluation
@@ -21,6 +27,9 @@ export class HydraMiniGUI {
         this.guiManager.setupGUI();
         hookIntoEval.call(this);
         hookIntoHydraEditor.call(this);
+
+        // Store instance
+        window._hydraGui = this;
     }
 
     updateGUI() {
@@ -29,19 +38,23 @@ export class HydraMiniGUI {
     }
 
     updateValue(index, newValue) {
-        const newEvalCode = this.valueUpdater.updateValue(
+        // Update both editor and evaluation immediately
+        this.valueUpdater.updateValue(
             index,
             newValue,
             this.valuePositions,
             this.lastEvalRange,
             this.currentCode
         );
-        if (newEvalCode) {
-            this.currentEvalCode = newEvalCode;
+
+        // Update our current code to match the new state
+        if (window.cm && this.lastEvalRange) {
+            this.currentCode = window.cm.getRange(this.lastEvalRange.start, this.lastEvalRange.end);
         }
     }
 
     evaluateCode() {
+        if (!this.editor) return;
         const code = this.editor.getValue();
         console.log('evaluating code', code);
         try {
@@ -53,14 +66,23 @@ export class HydraMiniGUI {
 
     onReplEval() {
         console.log('on repl eval');
+        // Update our current code state when eval happens
+        if (window.cm && this.lastEvalRange) {
+            this.currentCode = window.cm.getRange(this.lastEvalRange.start, this.lastEvalRange.end);
+        }
     }
 
     onCodeChange() {
         console.log('on code change');
         clearTimeout(this._updateTimeout);
         this._updateTimeout = setTimeout(() => {
-            if (this.editor) {
-                this.currentCode = this.editor.getValue();
+            if (window.cm) {
+                // Update current code from the last eval range if available
+                if (this.lastEvalRange) {
+                    this.currentCode = window.cm.getRange(this.lastEvalRange.start, this.lastEvalRange.end);
+                } else {
+                    this.currentCode = window.cm.getValue();
+                }
                 console.log('updating gui');
                 this.updateGUI();
             }

@@ -5,12 +5,21 @@ export class GUIManager {
         this.hydra = hydra;
         this.gui = null;
         this.controls = new Map();
+        this._observer = null;
     }
 
     setupGUI() {
         console.log('setting up gui');
-        // If GUI already exists, don't recreate it
-        if (this.gui) return;
+        
+        // Clean up any existing GUI first
+        this.cleanup();
+
+        // Check for existing GUI in the DOM
+        const existingGui = document.getElementById('hydra-mini-gui');
+        if (existingGui) {
+            console.log('Found existing GUI, removing it');
+            existingGui.remove();
+        }
 
         if (!window.lil?.GUI) {
             console.error('lil-gui not loaded');
@@ -35,14 +44,17 @@ export class GUIManager {
             editorContainer.appendChild(container);
         } else {
             // Fallback: create our own container that looks like Hydra's
-            const ourContainer = document.createElement('div');
-            ourContainer.setAttribute('id', 'hydra-mini-gui-container');
-            ourContainer.classList.add('hydra-ui');
-            ourContainer.style.position = 'fixed';
-            ourContainer.style.zIndex = '9998';
-            ourContainer.style.top = '0';
-            ourContainer.style.right = '0';
-            document.body.appendChild(ourContainer);
+            let ourContainer = document.getElementById('hydra-mini-gui-container');
+            if (!ourContainer) {
+                ourContainer = document.createElement('div');
+                ourContainer.setAttribute('id', 'hydra-mini-gui-container');
+                ourContainer.classList.add('hydra-ui');
+                ourContainer.style.position = 'fixed';
+                ourContainer.style.zIndex = '9998';
+                ourContainer.style.top = '0';
+                ourContainer.style.right = '0';
+                document.body.appendChild(ourContainer);
+            }
             ourContainer.appendChild(container);
         }
 
@@ -55,22 +67,42 @@ export class GUIManager {
         this.gui.add({ message: 'Waiting for code...' }, 'message').disable();
 
         // Create a mutation observer to watch for DOM changes
-        const observer = new MutationObserver((mutations) => {
+        this._observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 // If our GUI was removed, re-add it
                 if ([...mutation.removedNodes].includes(container)) {
                     console.log('GUI was removed, re-adding');
                     const parent = container.parentElement || editorContainer || document.body;
-                    parent.appendChild(container);
-                    this.gui.show();
-                    this.gui._closed = false;
-                    container.style.display = '';
+                    // Only re-add if no other GUI exists
+                    if (!document.getElementById('hydra-mini-gui')) {
+                        parent.appendChild(container);
+                        this.gui.show();
+                        this.gui._closed = false;
+                        container.style.display = '';
+                    }
                 }
             });
         });
 
         // Start observing the document with the configured parameters
-        observer.observe(document.body, { childList: true, subtree: true });
+        this._observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    cleanup() {
+        // Disconnect observer if it exists
+        if (this._observer) {
+            this._observer.disconnect();
+            this._observer = null;
+        }
+
+        // Destroy existing GUI if it exists
+        if (this.gui) {
+            this.gui.destroy();
+            this.gui = null;
+        }
+
+        // Clear controls map
+        this.controls.clear();
     }
 
     updateGUI(currentCode, valuePositions, onValueChange) {
