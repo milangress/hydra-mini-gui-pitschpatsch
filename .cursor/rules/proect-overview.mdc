@@ -1,0 +1,60 @@
+---
+description: Overview about the projects structure
+globs: 
+---
+
+# Hydra Mini GUI Plugin Overview
+
+## Overview
+
+Hydra Mini GUI is a plugin for Hydra Synth that enhances the live-coding experience by providing a dynamic graphical user interface. It extracts numeric values from Hydra code (e.g., in expressions like `osc(22).out()`) and presents them as slider controls using the lil-gui library. This allows users to quickly adjust parameters such as oscillator frequencies or other numeric values with immediate visual feedback in Hydra.
+
+## Key Components
+
+- **src/index.js**: 
+  - Entry point for the plugin. 
+  - Loads dependencies (including lil-gui) and initializes the HydraMiniGUI instance.
+
+- **src/hydra-mini-gui.js**:
+  - Implements the HydraMiniGUI class, which orchestrates the plugin's behavior.
+  - Retrieves the Hydra instance via `getHydra()` from the utilities module.
+  - Sets up the UI through `GUIManager` and integrates with the editor via `hookIntoEval` and `hookIntoHydraEditor`.
+  - Handles updating numeric values by coordinating with `CodeValueManager`.
+
+- **src/utils/hydra-utils.js**:
+  - Provides utility functions such as `getHydra()` to detect and return the active Hydra instance.
+  - Implements `waitForGUI()`, a polling mechanism to ensure that the lil-gui library is loaded before the UI is set up.
+
+- **src/editor/editor-integration.js** & **src/editor/code-value-manager.js**:
+  - Integrate with Hydra's online editor (https://hydra.ojack.xyz) and CodeMirror.
+  - `editor-integration.js` hooks into code evaluation events and key commands, ensuring that any evaluation triggers a UI update.
+  - `code-value-manager.js` uses Acorn and utilities from astravel to parse the code, find numeric literals, and manage updates without breaking formatting.
+
+## Integration Flow
+
+1. **Loading**: 
+   - The plugin is dynamically loaded inside Hydra via `await loadScript("http://localhost:3000/hydra-mini-gui.js")`.
+   - This action initializes the plugin in the Hydra environment and attaches it to the global `window` object (as `window._hydraGui`).
+
+2. **Initialization**:
+   - Once loaded, dependencies are awaited (e.g., lil-gui).
+   - A singleton instance of `HydraMiniGUI` is created, ensuring only one instance operates at a time.
+
+3. **UI and Code Interaction**:
+   - The `GUIManager` sets up the GUI over the Hydra editor by integrating with the DOM, using a mutation observer to maintain persistence.
+   - `CodeValueManager` parses the current Hydra code for numeric values and provides metadata necessary to create slider controls.
+   - When a slider is adjusted, the plugin updates the corresponding numeric value in the code and triggers Hydra to re-evaluate, offering real-time updates.
+
+## Usage
+
+- **Injection**: Loaded externally into Hydra's editor environment, making it immediately available for live coding sessions.
+- **Live Updates**: Changes in slider positions directly update the code and appear in Hydra's live visuals.
+
+## Additional Notes
+
+- The plugin is designed to work exclusively with Hydra Synth and its online editor at [hydra.ojack.xyz](mdc:https:/hydra.ojack.xyz).
+- Currently, there is no automated testing set up; further attention may be given to error handling and edge-case management in future iterations.
+
+This document serves as an overview for another AI to quickly understand the architecture, flow, and integration points of the Hydra Mini GUI plugin.
+
+*/

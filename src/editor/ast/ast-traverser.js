@@ -153,7 +153,8 @@ export class ASTTraverser {
                     // Handle numeric literals
                     if (node.type === 'Literal' && typeof node.value === 'number') {
                         const line = code.split('\n')[node.loc?.start?.line - 1];
-                        if (!line?.includes('loadScript')) {
+                        // Skip if line contains loadScript or await loadScript
+                        if (!line?.includes('loadScript') && !line?.includes('await loadScript')) {
                             const lineStart = (node.loc?.start?.line ?? 1) - 1;
                             
                             // Try to get function name from AST first

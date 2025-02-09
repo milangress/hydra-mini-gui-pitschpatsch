@@ -125,6 +125,7 @@ describe("ASTTraverser", () => {
             });
         });
 
+
         test("should handle source and output references", () => {
             const code = "s0.mult(o1, 0.5).out(o2)";
             const ast = Parser.parse(code, { locations: true, ecmaVersion: 'latest' });

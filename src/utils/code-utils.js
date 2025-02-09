@@ -3,6 +3,19 @@
  */
 
 /**
+ * Remove loadScript lines from code before parsing
+ * This handles both regular loadScript and await loadScript
+ * @param {string} code - The code to process
+ * @returns {string} Code with loadScript lines removed
+ */
+export function removeLoadScriptLines(code) {
+    if (!code) return code;
+    return code.split('\n')
+        .filter(line => !line.includes('loadScript'))
+        .join('\n');
+}
+
+/**
  * Extract the function name from code before a value using regex
  * This is a fallback method when AST analysis can't determine the function name
  * @param {string} beforeContent - The code content before the value

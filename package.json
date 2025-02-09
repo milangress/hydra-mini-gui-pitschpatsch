@@ -13,7 +13,12 @@
     "build:watch": "bun build ./src/index.js --outfile=dist/hydra-mini-gui.js --watch",
     "test": "bun test",
     "test:watch": "bun test --watch",
-    "test:coverage": "bun test --coverage"
+    "test:coverage": "bun test --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "playwright:install": "playwright install chromium"
   },
   "keywords": [
     "hydra",
@@ -33,6 +38,7 @@
     "tweakpane": "^4.0.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.50.1",
     "bun-types": "latest",
     "happy-dom": "^17.0.2"
   }

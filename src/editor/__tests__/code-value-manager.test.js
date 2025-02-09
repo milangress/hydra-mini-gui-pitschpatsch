@@ -34,6 +34,14 @@ const mockHydra = {
     s: Array(4).fill({ label: null })
 };
 
+// Mock the logger
+mock.module('../../utils/logger.js', () => ({
+    Logger: {
+        log: mock(() => {}),
+        error: mock(() => {})
+    }
+}));
+
 describe("CodeValueManager", () => {
     let manager;
     

@@ -3,10 +3,13 @@ import { Logger } from '../../utils/logger.js';
 import { mock, expect, test, spyOn, describe, beforeEach, afterEach } from "bun:test";
 
 // Mock the logger to avoid console output during tests
+const mockLogger = {
+    log: mock(() => {}),
+    error: mock(() => {})
+};
+
 mock.module('../../utils/logger.js', () => ({
-    Logger: {
-        log: mock(() => {})
-    }
+    Logger: mockLogger
 }));
 
 describe('Editor Integration', () => {
@@ -15,8 +18,9 @@ describe('Editor Integration', () => {
     let context;
 
     beforeEach(() => {
-        // Reset all mocks
-        mock.restore();
+        // Reset mock call counts
+        mockLogger.log.mockClear();
+        mockLogger.error.mockClear();
 
         // Mock CodeMirror instance
         mockCm = {
@@ -68,6 +72,7 @@ describe('Editor Integration', () => {
     afterEach(() => {
         // Restore all mocks to their original state
         mock.restore();
+        delete global.window;
     });
 
     describe('hookIntoEval', () => {
@@ -79,8 +84,8 @@ describe('Editor Integration', () => {
             window.eval('test code');
 
             // Verify logger was called with correct arguments
-            expect(Logger.log.mock.calls[0]).toEqual(['hooking into eval']);
-            expect(Logger.log.mock.calls[1]).toEqual(['window.eval:', 'test code']);
+            expect(mockLogger.log.mock.calls[0]).toEqual(['hooking into eval']);
+            expect(mockLogger.log.mock.calls[1]).toEqual(['window.eval:', 'test code']);
             
             // Verify original eval was called
             expect(evalSpy).toHaveBeenCalledWith('test code');
@@ -106,7 +111,7 @@ describe('Editor Integration', () => {
             // Verify setup occurred
             expect(mockCm.on.mock.calls).toHaveLength(1);
             expect(mockCm.on.mock.calls[0]).toEqual(['change', expect.any(Function)]);
-            expect(Logger.log.mock.calls.some(call => call[0] === 'Successfully hooked into Hydra editor')).toBe(true);
+            expect(mockLogger.log.mock.calls.some(call => call[0] === 'Successfully hooked into Hydra editor')).toBe(true);
         });
 
         test('should set up change handler correctly', async () => {
@@ -172,7 +177,7 @@ describe('Editor Integration', () => {
             expect(context.updateGUI.mock.calls).toHaveLength(1);
 
             // Reset the mock calls
-            context.updateGUI = mock(() => {});
+            context.updateGUI.mockClear();
             mockCm.options.extraKeys['Alt-Enter']();
             expect(context.lastEvalRange).toEqual({
                 start: { line: 2, ch: 0 },
@@ -181,7 +186,7 @@ describe('Editor Integration', () => {
             expect(context.updateGUI.mock.calls).toHaveLength(1);
 
             // Reset the mock calls
-            context.updateGUI = mock(() => {});
+            context.updateGUI.mockClear();
             mockCm.options.extraKeys['Shift-Ctrl-Enter']();
             expect(context.lastEvalRange).toEqual({
                 start: { line: 0, ch: 0 },

@@ -3,6 +3,7 @@ import { Parser } from 'acorn';
 import { ASTTraverser } from './ast/ast-traverser.js';
 import { CodeFormatter } from './code-formatter.js';
 import { Logger } from '../utils/logger.js';
+import { removeLoadScriptLines } from '../utils/code-utils.js';
 
 /**
  * Manages the finding and updating of numeric values in Hydra code, handling both static values
@@ -36,12 +37,14 @@ export class CodeValueManager {
         if (!code) return [];
 
         try {
-            const ast = Parser.parse(code, {
+            // Remove loadScript lines before parsing
+            const cleanCode = removeLoadScriptLines(code);
+            const ast = Parser.parse(cleanCode, {
                 locations: true,
                 ecmaVersion: 'latest'
             });
 
-            return this._astTraverser.findValues(ast, code);
+            return this._astTraverser.findValues(ast, cleanCode);
         } catch (error) {
             Logger.error('Error finding values:', error);
             return [];

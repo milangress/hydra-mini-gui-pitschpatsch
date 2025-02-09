@@ -3,7 +3,7 @@
 
 import { getHydra, waitForGUI } from './utils/hydra-utils.js';
 import { hookIntoEval, hookIntoHydraEditor } from './editor/editor-integration.js';
-import { GUIManager } from './gui/gui-manager.js';
+import { GUIManager } from './gui/core/gui-manager.js';
 import { CodeValueManager } from './editor/code-value-manager.js';
 import { Logger } from './utils/logger.js';
 
@@ -37,10 +37,8 @@ export class HydraMiniGUI {
         try {
             this.valuePositions = this.codeManager.findValues(this.currentCode);
             this.guiManager.updateGUI(this.currentCode, this.valuePositions, this.updateValue.bind(this));
-            this.guiManager.hideError(); // Clear any previous plugin errors
         } catch (error) {
             Logger.error('Error updating GUI:', error);
-            this.guiManager.showError('Plugin Error: ' + error.toString());
         }
     }
 
@@ -58,15 +56,8 @@ export class HydraMiniGUI {
             if (window.cm && this.lastEvalRange) {
                 this.currentCode = window.cm.getRange(this.lastEvalRange.start, this.lastEvalRange.end);
             }
-            this.guiManager.hideError(); // Clear any previous plugin errors
         } catch (error) {
             Logger.error('Error updating value:', error);
-            this.guiManager.showError('Plugin Error: ' + error.toString());
-            // Revert the GUI to show the original value
-            if (this.valuePositions[index]) {
-                const originalValue = this.valuePositions[index].value;
-                this.guiManager.revertValue(index, originalValue);
-            }
         }
     }
 

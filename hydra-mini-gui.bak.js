@@ -256,7 +256,7 @@
             container.style.display = '';
 
             // Add a placeholder until we have real controls
-            this.gui.add({ message: 'Waiting for code...' }, 'message').disable();
+            this.gui.add({ message: 'Run code to see controls' }, 'message').disable();
 
             // Create a mutation observer to watch for DOM changes
             const observer = new MutationObserver((mutations) => {

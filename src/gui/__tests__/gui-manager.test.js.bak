@@ -1,0 +1,488 @@
+import { expect, test, describe, mock, beforeEach, afterEach } from "bun:test";
+import { GUIManager } from '../gui-manager.js';
+import { GUIUtils } from '../gui-utils.js';
+import { Logger } from '../../utils/logger.js';
+
+// Mock the logger
+mock.module('../../utils/logger.js', () => ({
+    Logger: {
+        log: mock(() => {}),
+        error: mock(() => {})
+    }
+}));
+
+// Create a mock element class
+class MockElement {
+    constructor() {
+        this.dataset = {};
+        this.style = {};
+        this.children = [];
+        this.parentElement = null;
+        this.classList = {
+            add: mock(() => {}),
+            remove: mock(() => {}),
+            contains: mock(() => false)
+        };
+        this._id = '';
+        this._eventListeners = {};
+    }
+
+    appendChild(child) {
+        if (!this.children.includes(child)) {
+            this.children.push(child);
+            if (child.parentElement) {
+                child.parentElement.removeChild(child);
+            }
+            child.parentElement = this;
+        }
+        return child;
+    }
+
+    removeChild(child) {
+        const index = this.children.indexOf(child);
+        if (index !== -1) {
+            this.children.splice(index, 1);
+            child.parentElement = null;
+        }
+    }
+
+    insertBefore(newNode, referenceNode) {
+        const index = referenceNode ? this.children.indexOf(referenceNode) : this.children.length;
+        if (!this.children.includes(newNode)) {
+            if (newNode.parentElement) {
+                newNode.parentElement.removeChild(newNode);
+            }
+            this.children.splice(index, 0, newNode);
+            newNode.parentElement = this;
+        }
+        return newNode;
+    }
+
+    querySelector(selector) {
+        if (selector.startsWith('style[data-tp-style=')) {
+            return null;
+        }
+        if (selector === '.hydra-ui') {
+            return this;
+        }
+        return null;
+    }
+
+    createElement(tagName) {
+        return new MockElement();
+    }
+
+    remove() {
+        if (this.parentElement) {
+            this.parentElement.removeChild(this);
+        }
+    }
+
+    setAttribute(name, value) {
+        if (name === 'id') {
+            this._id = value;
+        }
+    }
+
+    getAttribute(name) {
+        if (name === 'id') {
+            return this._id;
+        }
+        return null;
+    }
+
+    addEventListener(type, handler) {
+        if (!this._eventListeners[type]) {
+            this._eventListeners[type] = [];
+        }
+        this._eventListeners[type].push(handler);
+    }
+
+    removeEventListener(type, handler) {
+        if (this._eventListeners[type]) {
+            this._eventListeners[type] = this._eventListeners[type].filter(h => h !== handler);
+        }
+    }
+
+    dispatchEvent(event) {
+        const handlers = this._eventListeners[event.type] || [];
+        handlers.forEach(handler => handler(event));
+        return true;
+    }
+
+    addFolder(options) {
+        const folder = new MockElement();
+        folder.addFolder = mock(() => new MockElement());
+        folder.addButton = mock(() => new MockElement());
+        folder.addBinding = mock(() => ({
+            on: mock(() => {}),
+            dispose: mock(() => {})
+        }));
+        this.appendChild(folder);
+        return folder;
+    }
+}
+
+class MockMutationObserver {
+    constructor(callback) {
+        this.callback = callback;
+        this.observing = null;
+    }
+
+    observe(target, options) {
+        this.observing = { target, options };
+    }
+
+    disconnect() {
+        this.observing = null;
+    }
+
+    // Helper method for tests to trigger mutations
+    triggerMutation(mutations) {
+        if (this.callback) {
+            this.callback(mutations);
+        }
+    }
+}
+
+// Mock document for Tweakpane
+const mockDocument = {
+    createElement: (tagName) => new MockElement(),
+    head: new MockElement(),
+    body: new MockElement(),
+    getElementById: (id) => {
+        // For hydra-mini-gui-styles
+        if (id === 'hydra-mini-gui-styles') {
+            return null;
+        }
+        // For hydra-mini-gui
+        if (id === 'hydra-mini-gui') {
+            const element = new MockElement();
+            element.setAttribute('id', id);
+            return element;
+        }
+        return null;
+    },
+    querySelector: (selector) => {
+        if (selector === '.hydra-ui') {
+            return new MockElement();
+        }
+        return null;
+    }
+};
+
+global.document = mockDocument;
+
+global.window = {
+    cm: {
+        getRange: () => '',
+        startOperation: () => {},
+        endOperation: () => {},
+        replaceRange: () => {}
+    }
+};
+
+// Mock Tweakpane
+class MockController {
+    constructor() {
+        this.element = new MockElement();
+        this.refresh = mock(() => {});
+    }
+}
+
+class MockFolder extends MockController {
+    constructor() {
+        super();
+        this.children = [];
+        this.hidden = false;
+    }
+
+    addBinding(obj, key, options) {
+        const controller = new MockController();
+        this.children.push(controller);
+        return controller;
+    }
+
+    dispose() {
+        this.children = [];
+    }
+}
+
+class MockTab {
+    constructor() {
+        this.pages = [new MockFolder(), new MockFolder()];
+    }
+}
+
+// Mock Pane class for Tweakpane
+class MockPane {
+    constructor(config) {
+        this.element = new MockElement();
+        this.tabs = {
+            pages: [
+                {
+                    title: 'Parameters',
+                    addFolder: mock(() => ({
+                        addButton: mock(() => ({})),
+                        addBinding: mock(() => ({
+                            on: mock(() => {}),
+                            dispose: mock(() => {})
+                        }))
+                    }))
+                },
+                {
+                    title: 'Settings',
+                    addFolder: mock(() => ({
+                        addButton: mock(() => ({})),
+                        addBinding: mock(() => ({
+                            on: mock(() => {}),
+                            dispose: mock(() => {})
+                        }))
+                    }))
+                }
+            ]
+        };
+        this.addTab = mock(() => this.tabs);
+        this.dispose = mock(() => {});
+    }
+}
+
+global.Tweakpane = {
+    BladeApi: class {},
+    Pane: class {
+        constructor() {
+            return mockPane;
+        }
+    }
+};
+
+// Mock ResizeObserver
+global.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+};
+
+// Mock SettingsPage
+const mockSettingsPage = {
+    setup: mock(() => {}),
+    cleanup: mock(() => {}),
+    setResetCallback: mock(() => {}),
+    setDefaultCallback: mock(() => {}),
+    updateCode: mock(() => {}),
+    updateDefaults: mock(() => {}),
+    showError: mock(() => {}),
+    hideError: mock(() => {})
+};
+
+// Mock ParameterManager
+const mockParameterManager = {
+    cleanup: mock(() => {}),
+    updateParameters: mock(() => new Map()),
+    updateControlValue: mock(() => {}),
+    resetAllValues: mock(() => {}),
+    revertValue: mock(() => {})
+};
+
+describe('GUIManager', () => {
+    let manager;
+    let container;
+    let mockPane;
+    let mockSettingsPage;
+    let mockParameterManager;
+
+    beforeEach(() => {
+        container = new MockElement();
+        mockPane = new MockPane();
+        mockSettingsPage = {
+            setupCallbacks: mock(() => {}),
+            dispose: mock(() => {})
+        };
+        mockParameterManager = {
+            updateControlValue: mock(() => {})
+        };
+
+        // Set up global document mock
+        global.document = mockDocument;
+        global.MutationObserver = MockMutationObserver;
+        global.Pane = MockPane;
+
+        manager = new GUIManager();
+        manager._pane = mockPane;
+        manager._settingsPage = mockSettingsPage;
+        manager._parameterManager = mockParameterManager;
+    });
+
+    afterEach(() => {
+        delete global.document;
+        delete global.MutationObserver;
+        delete global.Pane;
+    });
+
+    describe('Container Management', () => {
+        test('should create and style container correctly', () => {
+            const container = manager._setupContainer();
+            
+            expect(container).toBeDefined();
+            expect(container.style.zIndex).toBe('9999');
+            expect(container.style.position).toBe('fixed');
+            expect(container.classList.add).toHaveBeenCalledWith('hydra-ui');
+            expect(container.getAttribute('id')).toBe('hydra-mini-gui');
+        });
+
+        test('should remove existing GUI if present', () => {
+            const existingGui = new MockElement();
+            mockDocument.getElementById = mock(() => existingGui);
+            
+            manager._setupContainer();
+            
+            expect(mockDocument.getElementById).toHaveBeenCalledWith('hydra-mini-gui');
+            expect(Logger.log).toHaveBeenCalledWith('Found existing GUI, removing it');
+        });
+
+        test('should add container to editor container if available', () => {
+            const container = new MockElement();
+            const editorContainer = new MockElement();
+            document.querySelector = mock(() => editorContainer);
+
+            manager._addContainerToDOM(container);
+
+            expect(editorContainer.children).toContain(container);
+        });
+
+        test('should create fallback container if editor container not found', () => {
+            const container = new MockElement();
+            document.querySelector = mock(() => null);
+            document.body = new MockElement();
+
+            manager._addContainerToDOM(container);
+
+            expect(document.body.children).toContain(container);
+        });
+    });
+
+    describe('Observer Setup', () => {
+        test('should setup mutation observer', () => {
+            const container = new MockElement();
+            const editorContainer = new MockElement();
+
+            manager._setupObserver(container, editorContainer);
+
+            expect(manager._observer).toBeDefined();
+            expect(manager._observer.observing).toBeDefined();
+            expect(manager._observer.observing.target).toBe(editorContainer);
+        });
+
+        test('should re-add GUI when removed', () => {
+            const editorContainer = new MockElement();
+            manager._setupObserver(container, editorContainer);
+
+            // Get the observer instance
+            const observer = manager._observer;
+
+            // Simulate mutation
+            observer.triggerMutation([{
+                removedNodes: [container]
+            }]);
+
+            expect(editorContainer.children).toContain(container);
+        });
+    });
+
+    describe('Tab Management', () => {
+        test('should setup tabs correctly', () => {
+            manager.gui = mockPane;
+            manager._setupTabs();
+
+            expect(mockPane.addTab).toHaveBeenCalled();
+            expect(manager.parametersTab).toBeDefined();
+            expect(manager.settingsTab).toBeDefined();
+        });
+
+        test('should setup settings callbacks', () => {
+            manager.gui = mockPane;
+            manager._setupTabs();
+
+            expect(mockSettingsPage.setResetCallback).toHaveBeenCalled();
+            expect(mockSettingsPage.setDefaultCallback).toHaveBeenCalled();
+        });
+    });
+
+    describe('Position Management', () => {
+        test('should save and restore position', () => {
+            const container = new MockElement();
+            container.style.left = '100px';
+            container.style.top = '50px';
+
+            const position = manager._getPosition(container);
+            manager._managePosition(container, position);
+
+            expect(container.style.left).toBe('100px');
+            expect(container.style.top).toBe('50px');
+        });
+
+        test('should set default position when none saved', () => {
+            const container = new MockElement();
+            manager._managePosition(container);
+
+            expect(container.style.right).toBe('10px');
+            expect(container.style.top).toBe('10px');
+        });
+    });
+
+    describe('GUI Lifecycle', () => {
+        test('should setup GUI correctly', () => {
+            manager.setupGUI();
+
+            expect(mockPane.addTab).toHaveBeenCalled();
+            expect(mockSettingsPage.setup).toHaveBeenCalled();
+        });
+
+        test('should cleanup correctly', () => {
+            manager.setupGUI();
+            manager.cleanup();
+
+            expect(mockPane.dispose).toHaveBeenCalled();
+            expect(mockSettingsPage.cleanup).toHaveBeenCalled();
+            expect(mockParameterManager.cleanup).toHaveBeenCalled();
+            expect(manager.gui).toBeNull();
+            expect(manager.tabs).toBeNull();
+            expect(manager.parametersTab).toBeNull();
+        });
+
+        test('should update GUI correctly', () => {
+            const code = 'test code';
+            const values = [{ index: 0, value: 1 }];
+            const onChange = () => {};
+
+            manager.setupGUI();
+            manager.updateGUI(code, values, onChange);
+
+            expect(mockParameterManager.updateParameters).toHaveBeenCalledWith(
+                manager.parametersTab,
+                code,
+                values,
+                onChange
+            );
+            expect(mockSettingsPage.updateCode).toHaveBeenCalledWith(code);
+            expect(mockSettingsPage.updateDefaults).toHaveBeenCalledWith(values);
+        });
+
+        test('should handle errors during update', () => {
+            const error = new Error('Test error');
+            mockParameterManager.updateParameters = mock(() => { throw error; });
+
+            manager.setupGUI();
+            manager.updateGUI('test', [], () => {});
+
+            expect(mockSettingsPage.showError).toHaveBeenCalledWith(error.message);
+        });
+    });
+
+    describe('Control Updates', () => {
+        test('should update control value', () => {
+            manager.updateControlValue('test', 42);
+            expect(mockParameterManager.updateControlValue).toHaveBeenCalledWith('test', 42);
+        });
+    });
+}); 
