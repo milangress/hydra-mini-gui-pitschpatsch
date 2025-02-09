@@ -25,7 +25,8 @@
   },
   "dependencies": {
     "acorn": "^8.11.3",
+    "astravel": "^0.5.0",
     "astring": "^1.8.6",
-    "astravel": "^0.5.0"
+    "tweakpane": "^4.0.5"
   }
 }
