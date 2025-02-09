@@ -1,6 +1,7 @@
 // GUI management functionality
 import { Parser } from 'acorn';
 import { Pane } from 'tweakpane';
+import { SettingsPage } from './settings-page.js';
 
 // Add error message styling
 const style = document.createElement('style');
@@ -21,15 +22,9 @@ export class GUIManager {
         this.gui = null;
         this.controls = new Map();
         this._observer = null;
-        this.errorFolder = null;
-        this.resetButton = null;
         this.tabs = null;
         this.parametersTab = null;
-        this.settingsTab = null;
-        this.codeMonitorFolder = null;
-        this.statsFolder = null;
-        this.currentCode = '';
-        this._statsInterval = null;
+        this.settingsPage = new SettingsPage(hydra);
     }
 
     setupGUI() {
@@ -71,67 +66,9 @@ export class GUIManager {
         // Store references to tabs
         [this.parametersTab, this.settingsTab] = this.tabs.pages;
         
-        // Add control buttons to settings tab
-        const controlsFolder = this.settingsTab.addFolder({
-            title: 'Controls',
-            expanded: true
-        });
-
-        // Add reset button
-        const resetObj = { reset: () => this.resetAllValues() };
-        this.resetButton = controlsFolder.addButton({
-            title: 'Reset All Values',
-        }).on('click', () => resetObj.reset());
-
-        // Add hush button
-        const hushObj = { hush: () => this.hydra.synth.hush() };
-        controlsFolder.addButton({
-            title: 'Hush',
-        }).on('click', () => hushObj.hush());
-        
-        // Add statistics folder
-        this.statsFolder = this.settingsTab.addFolder({
-            title: 'Statistics',
-            expanded: true
-        });
-
-        const fpsGraph = this.statsFolder.addBinding(this.hydra.synth.stats, 'fps', {
-            label: 'FPS',
-            view: 'graph',
-            min: 0,
-            max: 180,
-            readonly: true
-        });
-
-        const timeMonitor = this.statsFolder.addBinding(this.hydra.synth, 'time', {
-            readonly: true,
-            label: 'Time'
-        });
-        
-        // Add code monitor folder to settings tab
-        this.codeMonitorFolder = this.settingsTab.addFolder({
-            title: 'Current Code',
-            expanded: false
-        });
-        
-        const codeObj = { code: this.currentCode || 'No code yet' };
-        this.codeMonitorFolder.addBinding(codeObj, 'code', {
-            readonly: true,
-            multiline: true,
-            rows: 5
-        });
-        
-        // Add error folder to settings tab (hidden by default)
-        this.errorFolder = this.settingsTab.addFolder({ 
-            title: 'Errors',
-            expanded: false
-        });
-        
-        const errorObj = { message: 'No errors' };
-        this.errorFolder.addBinding(errorObj, 'message', {
-            readonly: true
-        });
-        this.errorFolder.hidden = true;
+        // Setup settings page
+        this.settingsPage.setup(this.settingsTab);
+        this.settingsPage.setResetCallback(() => this.resetAllValues());
 
         // Find Hydra's editor container and add our GUI to it
         const editorContainer = document.getElementById('editor-container');
@@ -192,17 +129,15 @@ export class GUIManager {
             this.gui = null;
         }
 
+        // Clean up settings page
+        this.settingsPage.cleanup();
+
         // Clear controls map
         this.controls.clear();
         
         // Reset references
-        this.errorFolder = null;
         this.tabs = null;
         this.parametersTab = null;
-        this.settingsTab = null;
-        this.codeMonitorFolder = null;
-        this.statsFolder = null;
-        this.currentCode = '';
     }
 
     updateGUI(currentCode, valuePositions, onValueChange) {
@@ -212,16 +147,7 @@ export class GUIManager {
         }
 
         // Update current code monitor
-        this.currentCode = currentCode || '';
-        if (this.codeMonitorFolder) {
-            this.codeMonitorFolder.children.slice().forEach(child => child.dispose());
-            const codeObj = { code: this.currentCode || 'No code' };
-            this.codeMonitorFolder.addBinding(codeObj, 'code', {
-                readonly: true,
-                multiline: true,
-                rows: 5
-            });
-        }
+        this.settingsPage.updateCode(currentCode);
 
         // Store the GUI's position
         const container = this.gui.element;
@@ -242,11 +168,11 @@ export class GUIManager {
                 if (currentCode) {
                     Parser.parse(currentCode, { ecmaVersion: 'latest' });
                     // If we get here, there's no syntax error
-                    this.hideError();
+                    this.settingsPage.hideError();
                 }
             } catch (error) {
                 // Show syntax error in the error folder
-                this.showError(error.message);
+                this.settingsPage.showError(error.message);
             }
             // Add a placeholder if no values found
             const placeholderObj = { message: 'No controls available' };
@@ -255,7 +181,7 @@ export class GUIManager {
             });
         } else {
             // Hide error folder if we have valid values
-            this.hideError();
+            this.settingsPage.hideError();
             
             // Group values by their function and line number
             const functionGroups = new Map();
