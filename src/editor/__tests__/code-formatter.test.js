@@ -1,4 +1,4 @@
-import { expect, test, describe, beforeEach } from "bun:test";
+import { expect, test, describe, beforeEach, mock } from "bun:test";
 import { CodeFormatter } from "../code-formatter.js";
 import { Parser } from 'acorn';
 
@@ -15,32 +15,32 @@ describe("CodeFormatter", () => {
         formatter = new CodeFormatter(mockHydra);
     });
 
-    describe("_formatNumber", () => {
+    describe("formatNumber", () => {
         test("should format numbers < 1 with 3 decimal places", () => {
-            expect(formatter._formatNumber(0.123456)).toBe("0.123");
-            expect(formatter._formatNumber(0.100)).toBe("0.1");
+            expect(formatter.formatNumber(0.123456)).toBe("0.123");
+            expect(formatter.formatNumber(0.100)).toBe("0.1");
         });
 
         test("should format numbers < 10 with 2 decimal places", () => {
-            expect(formatter._formatNumber(1.23456)).toBe("1.23");
-            expect(formatter._formatNumber(9.5000)).toBe("9.5");
+            expect(formatter.formatNumber(1.23456)).toBe("1.23");
+            expect(formatter.formatNumber(9.5000)).toBe("9.5");
         });
 
         test("should round numbers >= 10", () => {
-            expect(formatter._formatNumber(10.6)).toBe("11");
-            expect(formatter._formatNumber(100.1)).toBe("100");
+            expect(formatter.formatNumber(10.6)).toBe("11");
+            expect(formatter.formatNumber(100.1)).toBe("100");
         });
 
         test("should handle special numbers", () => {
-            expect(formatter._formatNumber(NaN)).toBe("NaN");
-            expect(formatter._formatNumber(Infinity)).toBe("Infinity");
-            expect(formatter._formatNumber(-Infinity)).toBe("-Infinity");
+            expect(formatter.formatNumber(NaN)).toBe("NaN");
+            expect(formatter.formatNumber(Infinity)).toBe("Infinity");
+            expect(formatter.formatNumber(-Infinity)).toBe("-Infinity");
         });
 
         test("should handle negative numbers", () => {
-            expect(formatter._formatNumber(-0.123456)).toBe("-0.123");
-            expect(formatter._formatNumber(-1.23456)).toBe("-1.23");
-            expect(formatter._formatNumber(-10.6)).toBe("-11");
+            expect(formatter.formatNumber(-0.123456)).toBe("-0.123");
+            expect(formatter.formatNumber(-1.23456)).toBe("-1.23");
+            expect(formatter.formatNumber(-10.6)).toBe("-11");
         });
     });
 
@@ -95,10 +95,10 @@ describe("CodeFormatter", () => {
         });
     });
 
-    describe("_analyzeCodeStructure", () => {
+    describe("analyzeCodeStructure", () => {
         test("should identify all numeric values", () => {
             const code = "osc(10, 0.5).color(1).out()";
-            const structure = formatter._analyzeCodeStructure(code);
+            const structure = formatter.analyzeCodeStructure(code);
             
             expect(structure.numbers).toHaveLength(3);
             expect(structure.numbers[0].value).toBe(10);
@@ -108,7 +108,7 @@ describe("CodeFormatter", () => {
 
         test("should track indentation", () => {
             const code = "osc(10)\n  .color(1)\n    .out()";
-            const structure = formatter._analyzeCodeStructure(code);
+            const structure = formatter.analyzeCodeStructure(code);
             
             expect(structure.indentation.get(0)).toBe("");
             expect(structure.indentation.get(1)).toBe("  ");
@@ -117,7 +117,7 @@ describe("CodeFormatter", () => {
 
         test("should identify source and output references", () => {
             const code = "s0.mult(o1).out(o2)";
-            const structure = formatter._analyzeCodeStructure(code);
+            const structure = formatter.analyzeCodeStructure(code);
             
             expect(structure.identifiers).toHaveLength(3);
             expect(structure.identifiers[0].value).toBe("s0");
@@ -127,7 +127,7 @@ describe("CodeFormatter", () => {
 
         test("should track dot operator positions", () => {
             const code = "osc(10).color(1).out()";
-            const structure = formatter._analyzeCodeStructure(code);
+            const structure = formatter.analyzeCodeStructure(code);
             
             const dots = structure.dotOperators.get(0);
             expect(dots).toHaveLength(2);

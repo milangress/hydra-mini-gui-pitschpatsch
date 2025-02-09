@@ -14,6 +14,11 @@ export class CodeFormatter {
      */
     constructor(hydra) {
         this.hydra = hydra;
+        // Bind methods to ensure proper this context
+        this.formatNumber = this.formatNumber.bind(this);
+        this.generateCode = this.generateCode.bind(this);
+        this.analyzeCodeStructure = this.analyzeCodeStructure.bind(this);
+        this.createFormattingGenerator = this.createFormattingGenerator.bind(this);
     }
 
     /**
@@ -25,9 +30,8 @@ export class CodeFormatter {
      * 
      * @param {number} num - The number to format
      * @returns {string} The formatted number as a string with appropriate precision
-     * @private
      */
-    _formatNumber(num) {
+    formatNumber(num) {
         if (Number.isNaN(num)) return 'NaN';
         if (!Number.isFinite(num)) return num > 0 ? 'Infinity' : '-Infinity';
         
@@ -58,10 +62,10 @@ export class CodeFormatter {
 
         try {
             // Store exact positions of numbers and formatting
-            const originalStructure = this._analyzeCodeStructure(code);
+            const originalStructure = this.analyzeCodeStructure(code);
 
             // Create custom generator to preserve formatting
-            const formattingGenerator = this._createFormattingGenerator(originalStructure, valueMap);
+            const formattingGenerator = this.createFormattingGenerator(originalStructure, valueMap);
 
             // Generate code with preserved formatting
             const generatedCode = generate(ast, {
@@ -100,9 +104,8 @@ export class CodeFormatter {
      *   @returns {Map<number, string>} .indentation - Line number to indentation mapping
      *   @returns {Map<number, string>} .lineBreaks - Line number to line break style mapping
      *   @returns {Map<number, number[]>} .dotOperators - Line number to dot positions mapping
-     * @private
      */
-    _analyzeCodeStructure(code) {
+    analyzeCodeStructure(code) {
         const lines = code.split('\n');
         const structure = {
             lines,
@@ -172,16 +175,15 @@ export class CodeFormatter {
      * - Arrow function conversions
      * - Source/output reference preservation
      * 
-     * @param {Object} originalStructure - Original code structure from _analyzeCodeStructure
+     * @param {Object} originalStructure - Original code structure from analyzeCodeStructure
      * @param {Map<number, (number|string)>} valueMap - Map of values to be replaced
      * @returns {Object} Custom AST generator with methods for each node type:
      *   - MemberExpression: Handles method chaining
      *   - CallExpression: Handles function calls
      *   - Program: Handles overall code generation
      *   - findValues: Helper for value detection
-     * @private
      */
-    _createFormattingGenerator(originalStructure, valueMap) {
+    createFormattingGenerator(originalStructure, valueMap) {
         const formattingGenerator = Object.create(GENERATOR);
         
         // Get available sources and outputs for validation
@@ -191,7 +193,7 @@ export class CodeFormatter {
 
         Object.assign(formattingGenerator, {
             _currentLine: 0,
-            _formatNumber: this._formatNumber,
+            _formatNumber: this.formatNumber.bind(this),
             _validIdentifiers: validIdentifiers,
             _valueMap: valueMap,
 
@@ -218,7 +220,6 @@ export class CodeFormatter {
             },
 
             Program(node, state) {
-                this._currentLine = 0;
                 const numbers = [];
                 const identifiers = [];
                 node.body.forEach(stmt => {

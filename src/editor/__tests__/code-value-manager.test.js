@@ -4,7 +4,7 @@ import { CodeValueManager } from "../code-value-manager.js";
 // Mock window and CodeMirror
 const mockWindow = {
     cm: {
-        getRange: (start, end) => "",
+        getRange: (start, end) => "osc(10).out()",
         startOperation: () => {},
         endOperation: () => {},
         replaceRange: (text, start, end) => {}
@@ -13,7 +13,7 @@ const mockWindow = {
 
 // Mock Hydra instance
 const mockHydra = {
-    eval: () => {},  // Simple function to be mocked later
+    eval: mock(() => {}),  // Create the mock function using mock directly
     generator: {
         glslTransforms: {
             osc: {
@@ -40,7 +40,7 @@ describe("CodeValueManager", () => {
     beforeEach(() => {
         // Reset mocks and create fresh instance
         global.window = mockWindow;
-        mockHydra.eval = mock(() => {});  // Create new mock for each test
+        mockHydra.eval.mockReset();  // Reset the mock's state
         manager = new CodeValueManager(mockHydra);
     });
 
@@ -90,12 +90,21 @@ describe("CodeValueManager", () => {
 
     describe("updateValue", () => {
         test("should update a simple numeric value", async () => {
-            mock.module("../code-formatter.js", () => ({
-                generateCode: (ast, code, valueMap) => "osc(20).out()"
-            }));
-
             const code = "osc(10).out()";
             const values = manager.findValues(code);
+            
+            // Mock the code formatter
+            manager._codeFormatter = {
+                generateCode: (ast, code, valueMap) => {
+                    if (valueMap.has(0)) {
+                        const newCode = `osc(${valueMap.get(0)}).out()`;
+                        // Also update the mock window's getRange to return this code
+                        mockWindow.cm.getRange = () => newCode;
+                        return newCode;
+                    }
+                    return code;
+                }
+            };
 
             manager.updateValue(0, 20, values, { 
                 start: { line: 0, ch: 0 }, 
@@ -105,12 +114,29 @@ describe("CodeValueManager", () => {
             // Wait for debounce
             await new Promise(resolve => setTimeout(resolve, 2100));
             
-            expect(mockHydra.eval).toHaveBeenCalled();
+            // Verify that eval was called with the arrow function code
+            const calls = mockHydra.eval.mock.calls;
+            expect(calls.length).toBeGreaterThan(0);
+            const lastCall = calls[calls.length - 1][0];
+            expect(lastCall).toInclude("osc_frequency_line0_pos4_value = 20");
+            expect(lastCall).toInclude("osc(() => osc_frequency_line0_pos4_value).out()");
         });
 
         test("should handle arrow function conversion", async () => {
             const code = "osc(10).out()";
             const values = manager.findValues(code);
+            
+            // Mock the code formatter
+            manager._codeFormatter = {
+                generateCode: (ast, code, valueMap) => {
+                    // Return arrow function code for the first call
+                    if (valueMap.has(0) && typeof valueMap.get(0) === 'string') {
+                        return "() => { osc(() => freq_value).out() }";
+                    }
+                    // Return static code for subsequent calls
+                    return "osc(20).out()";
+                }
+            };
 
             manager.updateValue(0, 20, values, {
                 start: { line: 0, ch: 0 },
@@ -127,7 +153,7 @@ describe("CodeValueManager", () => {
         test("should handle evaluation errors gracefully", async () => {
             const code = "osc(10).out()";
             const values = manager.findValues(code);
-            mockHydra.eval = mock(() => { throw new Error("Eval failed"); });
+            mockHydra.eval.mockImplementation(() => { throw new Error("Eval failed"); });
 
             // Should not throw
             expect(() => {
