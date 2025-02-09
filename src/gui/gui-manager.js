@@ -1,4 +1,5 @@
 // GUI management functionality
+import { Parser } from 'acorn';
 
 export class GUIManager {
     constructor(hydra) {
@@ -6,6 +7,8 @@ export class GUIManager {
         this.gui = null;
         this.controls = new Map();
         this._observer = null;
+        this.errorFolder = null;
+        this.resetButton = null;
     }
 
     setupGUI() {
@@ -28,7 +31,16 @@ export class GUIManager {
 
         // Create the GUI
         this.gui = new window.lil.GUI({ title: 'Hydra Controls' });
-
+        
+        // Add reset button at the top
+        const resetObj = { reset: () => this.resetAllValues() };
+        this.resetButton = this.gui.add(resetObj, 'reset').name('Reset All Values');
+        
+        // Add error folder (hidden by default)
+        this.errorFolder = this.gui.addFolder('Errors');
+        this.errorFolder.add({ message: 'No errors' }, 'message').disable();
+        this.errorFolder.hide();
+        
         // Style the GUI container to work with Hydra
         const container = this.gui.domElement;
         container.style.zIndex = '9999';
@@ -103,6 +115,9 @@ export class GUIManager {
 
         // Clear controls map
         this.controls.clear();
+        
+        // Reset error folder reference
+        this.errorFolder = null;
     }
 
     updateGUI(currentCode, valuePositions, onValueChange) {
@@ -120,77 +135,74 @@ export class GUIManager {
             right: this.gui.domElement.style.right
         };
 
+        // Store the reset button reference before clearing
+        const resetObj = { reset: () => this.resetAllValues() };
+        
         // Clear ALL existing GUI elements (controllers and folders)
-        // First destroy all folders
         this.gui.folders.slice().forEach(folder => {
-            folder.destroy();
+            if (folder !== this.errorFolder) {
+                folder.destroy();
+            }
         });
-        // Then destroy any remaining controllers
+        
+        // Destroy all controllers
         while (this.gui.controllers.length) {
             this.gui.controllers[0].destroy();
         }
+        
+        // Re-add the reset button at the top
+        this.resetButton = this.gui.add(resetObj, 'reset').name('Reset All Values');
+        
         this.controls.clear();
 
-        // Find numbers and create controls
-        const numbers = valuePositions;
-
-        if (numbers.length === 0) {
-            // Add a placeholder if no numbers found
-            this.gui.add({ message: 'No numbers in current code' }, 'message').disable();
-        } else {
-            // Group numbers by their function and line number
-            const functionGroups = new Map(); // Map of functionId -> array of {value, index, paramName}
-            const values = {};
-            let currentFunctionId = null;
-            let currentParams = [];
-            let lastLineNumber = -1;
-
-            numbers.forEach((num, i) => {
-                const name = `value${i}`;
-                values[name] = num.value;
-
-                // Get the line content before the number to find the function
-                const line = currentCode.split('\n')[num.lineNumber];
-                const beforeNumber = line.substring(0, num.ch);
-
-                // Find all function calls in the chain up to this number
-                const functionCalls = [...beforeNumber.matchAll(/\.?([a-zA-Z]+)\s*\(/g)];
-                // Get the last function call before this number
-                const lastFunction = functionCalls[functionCalls.length - 1];
-                const functionName = lastFunction ? lastFunction[1] : 'unknown';
-
-                // Count parameters for this specific function call
-                let paramCount = 0;
-                if (lastFunction) {
-                    const functionStart = lastFunction.index + lastFunction[0].length;
-                    const textAfterFunction = beforeNumber.slice(functionStart);
-                    // Count commas before our number to determine which parameter we are
-                    paramCount = (textAfterFunction.match(/,/g) || []).length;
+        if (valuePositions.length === 0) {
+            // Check if it's a syntax error
+            try {
+                if (currentCode) {
+                    Parser.parse(currentCode, { ecmaVersion: 'latest' });
+                    // If we get here, there's no syntax error
+                    this.hideError();
                 }
+            } catch (error) {
+                // Show syntax error in the error folder
+                this.showError(error.message);
+            }
+            // Add a placeholder if no values found
+            this.gui.add({ message: 'No controls available' }, 'message').disable();
+        } else {
+            // Hide error folder if we have valid values
+            this.hideError();
+            
+            // Group values by their function and line number
+            const functionGroups = new Map();
+            const values = {};
 
-                // Create a unique ID for this function instance based on line number AND character position
-                const functionPosition = lastFunction ? lastFunction.index : 0;
-                const functionId = `${functionName}_line${num.lineNumber}_pos${functionPosition}`;
+            valuePositions.forEach((val, i) => {
+                const name = `value${i}`;
+                values[name] = val.value;
 
-                // Get transform info for parameter name
-                const transform = this.hydra?.generator?.glslTransforms?.[functionName];
-                const paramName = transform?.inputs?.[paramCount]?.name || `val${paramCount + 1}`;
+                // Create a unique ID for this function instance based on the function's start position
+                // For method chains, all parameters of the same function call will have the same functionStartCh
+                const functionId = `${val.functionName}_line${val.lineNumber}_pos${val.functionStartCh}`;
 
                 // Add to the function group
                 if (!functionGroups.has(functionId)) {
                     functionGroups.set(functionId, {
-                        name: functionName,
-                        line: num.lineNumber,
-                        position: functionPosition,
+                        name: val.functionName,
+                        line: val.lineNumber,
+                        position: val.functionStartCh, // Use function start position for sorting
                         params: []
                     });
                 }
+
                 functionGroups.get(functionId).params.push({
-                    value: num.value,
+                    value: val.value,
                     index: i,
-                    paramName,
+                    paramName: val.paramName,
                     controlName: name,
-                    paramCount
+                    paramCount: val.parameterIndex,
+                    type: val.type,
+                    options: val.options
                 });
             });
 
@@ -204,7 +216,7 @@ export class GUIManager {
                 });
 
             // Create folders for each function instance
-            let instanceCounts = new Map(); // Track instances of each function name
+            let instanceCounts = new Map();
             for (const [functionId, group] of sortedGroups) {
                 // Create a display name with instance number if needed
                 const count = instanceCounts.get(group.name) || 0;
@@ -217,25 +229,35 @@ export class GUIManager {
                 group.params.sort((a, b) => a.paramCount - b.paramCount);
 
                 group.params.forEach(param => {
-                    const controller = folder.add(values, param.controlName)
-                        .name(param.paramName)
-                        .onChange((value) => {
-                            onValueChange(param.index, value);
-                        });
+                    let controller;
+                    if (param.type === 'number') {
+                        controller = folder.add(values, param.controlName)
+                            .name(param.paramName)
+                            .onChange((value) => {
+                                onValueChange(param.index, value);
+                            });
 
-                    // Set min/max based on value magnitude
-                    const magnitude = Math.abs(param.value);
-                    if (magnitude > 0 && magnitude < 1) {
-                        controller.min(0).max(1).step(0.01);
-                    } else if (magnitude < 10) {
-                        controller.min(-10).max(10).step(0.1);
+                        // Set min/max based on value magnitude
+                        const magnitude = Math.abs(param.value);
+                        if (magnitude > 0 && magnitude < 1) {
+                            controller.min(0).max(1).step(0.01);
+                        } else if (magnitude < 10) {
+                            controller.min(-10).max(10).step(0.1);
+                        } else {
+                            controller.min(-100).max(100).step(1);
+                        }
                     } else {
-                        controller.min(-100).max(100).step(1);
+                        // For source/output parameters, create a dropdown
+                        controller = folder.add(values, param.controlName, param.options)
+                            .name(param.paramName)
+                            .onChange((value) => {
+                                onValueChange(param.index, value);
+                            });
                     }
 
                     this.controls.set(param.controlName, { controller, originalValue: param.value });
                 });
-
+                
                 // Open folders by default
                 folder.open();
             }
@@ -261,6 +283,67 @@ export class GUIManager {
         if (!guiPosition.left && !guiPosition.right) {
             this.gui.domElement.style.right = '10px';
             this.gui.domElement.style.top = '10px';
+        }
+    }
+
+    showError(message) {
+        if (!this.errorFolder) return;
+        
+        // Clear existing error messages
+        while (this.errorFolder.controllers.length) {
+            this.errorFolder.controllers[0].destroy();
+        }
+        
+        // Add new error message
+        const errorObj = { message };
+        this.errorFolder.add(errorObj, 'message').disable();
+        
+        // Style the error folder
+        this.errorFolder.show();
+        this.errorFolder.open();
+        
+        // Style the error message
+        const errorController = this.errorFolder.controllers[0];
+        if (errorController && errorController.domElement) {
+            const nameElement = errorController.domElement.querySelector('.name');
+            const widget = errorController.domElement.querySelector('.widget');
+            if (nameElement) nameElement.style.color = '#ff0000';
+            if (widget) widget.style.color = '#ff0000';
+        }
+    }
+
+    hideError() {
+        if (this.errorFolder) {
+            this.errorFolder.hide();
+        }
+    }
+
+    revertValue(index, originalValue) {
+        const controlName = `value${index}`;
+        const control = this.controls.get(controlName);
+        if (control?.controller) {
+            try {
+                // Use lil-gui's built-in reset functionality
+                control.controller.reset();
+            } catch (e) {
+                // Fallback to manual reset if built-in reset fails
+                control.controller.setValue(originalValue);
+            }
+        }
+    }
+
+    resetAllValues() {
+        for (const [controlName, control] of this.controls) {
+            if (control?.controller && control?.originalValue !== undefined) {
+                try {
+                    // Use lil-gui's built-in reset functionality
+                    control.controller.reset();
+                } catch (e) {
+                    // Fallback to manual reset if built-in reset fails
+                    const value = control.originalValue;
+                    control.controller.setValue(value);
+                }
+            }
         }
     }
 } 
