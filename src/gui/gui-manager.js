@@ -2,6 +2,7 @@
 import { Parser } from 'acorn';
 import { Pane } from 'tweakpane';
 import { SettingsPage } from './settings-page.js';
+import { GUIUtils } from './gui-utils.js';
 
 // Add error message styling
 const style = document.createElement('style');
@@ -25,6 +26,10 @@ export class GUIManager {
         this.tabs = null;
         this.parametersTab = null;
         this.settingsPage = new SettingsPage(hydra);
+    }
+
+    _getFunctionId(val) {
+        return `${val.functionName}_line${val.lineNumber}_pos${val.functionStartCh}`;
     }
 
     setupGUI() {
@@ -69,6 +74,23 @@ export class GUIManager {
         // Setup settings page
         this.settingsPage.setup(this.settingsTab);
         this.settingsPage.setResetCallback(() => this.resetAllValues());
+        this.settingsPage.setDefaultCallback((index, defaultValue) => {
+            if (defaultValue !== undefined) {
+                const controlName = `value${index}`;
+                const control = this.controls.get(controlName);
+                if (control) {
+                    if (control.isColor) {
+                        control.binding.color[control.colorComponent] = defaultValue;
+                    } else if (control.isPoint) {
+                        const mappedValue = control.mapPoint ? defaultValue * 2 - 0.5 : defaultValue;
+                        control.binding[control.pointKey][control.pointComponent] = mappedValue;
+                    } else {
+                        control.binding[controlName] = defaultValue;
+                    }
+                    control.controller.refresh();
+                }
+            }
+        });
 
         // Find Hydra's editor container and add our GUI to it
         const editorContainer = document.getElementById('editor-container');
@@ -146,8 +168,14 @@ export class GUIManager {
             this.setupGUI();
         }
 
+        // Store valuePositions for reference
+        this._lastValuePositions = valuePositions;
+
         // Update current code monitor
         this.settingsPage.updateCode(currentCode);
+
+        // Update defaults section in settings page
+        this.settingsPage.updateDefaults(valuePositions);
 
         // Store the GUI's position
         const container = this.gui.element;
@@ -184,50 +212,16 @@ export class GUIManager {
             this.settingsPage.hideError();
             
             // Group values by their function and line number
-            const functionGroups = new Map();
-            const values = {};
+            const functionGroups = GUIUtils.groupByFunction(valuePositions);
+            const values = Object.fromEntries(
+                valuePositions.map((val, i) => [`value${i}`, val.value])
+            );
 
-            valuePositions.forEach((val, i) => {
-                const name = `value${i}`;
-                values[name] = val.value;
-
-                // Create a unique ID for this function instance
-                const functionId = `${val.functionName}_line${val.lineNumber}_pos${val.functionStartCh}`;
-
-                if (!functionGroups.has(functionId)) {
-                    functionGroups.set(functionId, {
-                        name: val.functionName,
-                        line: val.lineNumber,
-                        position: val.functionStartCh,
-                        params: []
-                    });
-                }
-
-                functionGroups.get(functionId).params.push({
-                    value: val.value,
-                    index: i,
-                    paramName: val.paramName,
-                    controlName: name,
-                    paramCount: val.parameterIndex,
-                    type: val.type,
-                    options: val.options
-                });
-            });
-
-            // Sort and create folders
-            const sortedGroups = Array.from(functionGroups.entries())
-                .sort(([, a], [, b]) => {
-                    if (a.line !== b.line) return a.line - b.line;
-                    return a.position - b.position;
-                });
-
-            let instanceCounts = new Map();
-            for (const [functionId, group] of sortedGroups) {
-                const count = instanceCounts.get(group.name) || 0;
-                const displayName = count === 0 ? group.name : `${group.name} ${count + 1}`;
-                instanceCounts.set(group.name, count + 1);
-
-                const folder = this.parametersTab.addFolder({
+            // Use shared sorting and instance counting
+            const sortedGroups = GUIUtils.sortAndCountInstances(functionGroups);
+            
+            for (const { displayName, group } of sortedGroups) {
+                const folder = GUIUtils.createFolder(this.parametersTab, {
                     title: displayName,
                     expanded: true
                 });
