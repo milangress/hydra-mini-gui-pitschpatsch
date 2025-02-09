@@ -3,6 +3,7 @@ import { Parser } from 'acorn';
 import { Pane } from 'tweakpane';
 import { SettingsPage } from './settings-page.js';
 import { GUIUtils } from './gui-utils.js';
+import { Logger } from '../utils/logger.js';
 
 // Add error message styling
 const style = document.createElement('style');
@@ -33,7 +34,7 @@ export class GUIManager {
     }
 
     setupGUI() {
-        console.log('setting up gui');
+        Logger.log('setting up gui');
         
         // Clean up any existing GUI first
         this.cleanup();
@@ -41,7 +42,7 @@ export class GUIManager {
         // Check for existing GUI in the DOM
         const existingGui = document.getElementById('hydra-mini-gui');
         if (existingGui) {
-            console.log('Found existing GUI, removing it');
+            Logger.log('Found existing GUI, removing it');
             existingGui.remove();
         }
 
@@ -123,7 +124,7 @@ export class GUIManager {
             mutations.forEach((mutation) => {
                 // If our GUI was removed, re-add it
                 if ([...mutation.removedNodes].includes(container)) {
-                    console.log('GUI was removed, re-adding');
+                    Logger.log('GUI was removed, re-adding');
                     const parent = container.parentElement || editorContainer || document.body;
                     // Only re-add if no other GUI exists
                     if (!document.getElementById('hydra-mini-gui')) {
@@ -163,7 +164,7 @@ export class GUIManager {
     }
 
     updateGUI(currentCode, valuePositions, onValueChange) {
-        console.log('updating gui', !this.gui, 'current code:', currentCode);
+        Logger.log('updating gui', !this.gui, 'current code:', currentCode);
         if (!this.gui) {
             this.setupGUI();
         }

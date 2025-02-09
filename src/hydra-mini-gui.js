@@ -5,12 +5,13 @@ import { getHydra, waitForGUI } from './utils/hydra-utils.js';
 import { hookIntoEval, hookIntoHydraEditor } from './editor/editor-integration.js';
 import { GUIManager } from './gui/gui-manager.js';
 import { CodeValueManager } from './editor/code-value-manager.js';
+import { Logger } from './utils/logger.js';
 
 export class HydraMiniGUI {
     constructor() {
         // Ensure singleton instance
         if (window._hydraGui) {
-            console.log('HydraMiniGUI instance already exists');
+            Logger.log('HydraMiniGUI instance already exists');
             return window._hydraGui;
         }
 
@@ -38,7 +39,7 @@ export class HydraMiniGUI {
             this.guiManager.updateGUI(this.currentCode, this.valuePositions, this.updateValue.bind(this));
             this.guiManager.hideError(); // Clear any previous plugin errors
         } catch (error) {
-            console.error('Error updating GUI:', error);
+            Logger.error('Error updating GUI:', error);
             this.guiManager.showError('Plugin Error: ' + error.toString());
         }
     }
@@ -59,7 +60,7 @@ export class HydraMiniGUI {
             }
             this.guiManager.hideError(); // Clear any previous plugin errors
         } catch (error) {
-            console.error('Error updating value:', error);
+            Logger.error('Error updating value:', error);
             this.guiManager.showError('Plugin Error: ' + error.toString());
             // Revert the GUI to show the original value
             if (this.valuePositions[index]) {
@@ -72,25 +73,25 @@ export class HydraMiniGUI {
     evaluateCode() {
         if (!this.editor) return;
         const code = this.editor.getValue();
-        console.log('evaluating code', code);
+        Logger.log('evaluating code', code);
         this.hydra.eval(code);
     }
 
     onReplEval() {
-        console.log('on repl eval');
+        Logger.log('on repl eval');
         try {
             // Update our current code state when eval happens
             if (window.cm && this.lastEvalRange) {
                 this.currentCode = window.cm.getRange(this.lastEvalRange.start, this.lastEvalRange.end);
             }
         } catch (error) {
-            console.error('Error in REPL eval:', error);
+            Logger.error('Error in REPL eval:', error);
             this.guiManager.showError('Plugin Error: ' + error.toString());
         }
     }
 
     onCodeChange() {
-        console.log('on code change');
+        Logger.log('on code change');
         clearTimeout(this._updateTimeout);
         this._updateTimeout = setTimeout(() => {
             try {
@@ -101,11 +102,11 @@ export class HydraMiniGUI {
                     } else {
                         this.currentCode = window.cm.getValue();
                     }
-                    console.log('updating gui');
+                    Logger.log('updating gui');
                     this.updateGUI();
                 }
             } catch (error) {
-                console.error('Error handling code change:', error);
+                Logger.error('Error handling code change:', error);
                 this.guiManager.showError('Plugin Error: ' + error.toString());
             }
         }, 500);
@@ -115,7 +116,7 @@ export class HydraMiniGUI {
 // Initialize after ensuring lil-gui is loaded
 waitForGUI().then(() => {
     window._hydraGui = new HydraMiniGUI();
-    console.log('HydraMiniGUI initialized!');
+    Logger.log('HydraMiniGUI initialized!');
 }).catch(error => {
-    console.error('Error initializing HydraMiniGUI:', error);
+    Logger.error('Error initializing HydraMiniGUI:', error);
 }); 

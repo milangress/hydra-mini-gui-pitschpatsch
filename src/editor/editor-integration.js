@@ -1,14 +1,15 @@
 // Editor integration methods
+import { Logger } from '../utils/logger.js';
 
 export const hookIntoEval = () => {
-    console.log('hooking into eval');
+    Logger.log('hooking into eval');
     // Store the original window.eval
     const originalEval = window.eval;
     
     // Replace window.eval with our interceptor
     window.eval = (code) => {
         // Log the code being evaluated
-        console.log('window.eval:', code);
+        Logger.log('window.eval:', code);
         
         // Call the original eval with the code
         return originalEval.call(window, code);
@@ -16,11 +17,11 @@ export const hookIntoEval = () => {
 };
 
 export const hookIntoHydraEditor = function() {
-    console.log('hooking into hydra editor');
+    Logger.log('hooking into hydra editor');
     const waitForEditor = setInterval(() => {
         if (window.cm) {
             clearInterval(waitForEditor);
-            console.log('got editor');
+            Logger.log('got editor');
 
             // Get the CodeMirror instance
             const cm = window.cm;
@@ -75,7 +76,7 @@ export const hookIntoHydraEditor = function() {
                 const pos2 = { line: endline, ch: 0 };
                 const str = cm.getRange(pos1, pos2);
 
-                console.log('Found block:', {
+                Logger.log('Found block:', {
                     start: pos1,
                     end: pos2,
                     text: str
@@ -128,7 +129,7 @@ export const hookIntoHydraEditor = function() {
                         // Update GUI before evaluation
                         this.updateGUI();
 
-                        console.log('lastEvalRange', this.lastEvalRange);
+                        Logger.log('lastEvalRange', this.lastEvalRange);
 
                         // Let Hydra's handler do its thing
                         originalHandler();
@@ -139,7 +140,7 @@ export const hookIntoHydraEditor = function() {
             // Update CodeMirror options with our wrapped key handlers
             cm.setOption('extraKeys', originalExtraKeys);
 
-            console.log('Successfully hooked into Hydra editor');
+            Logger.log('Successfully hooked into Hydra editor');
         }
     }, 100);
 };

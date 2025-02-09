@@ -2,6 +2,7 @@
 import { Parser } from 'acorn';
 import { ASTTraverser } from './ast/ast-traverser.js';
 import { CodeFormatter } from './code-formatter.js';
+import { Logger } from '../utils/logger.js';
 
 export class CodeValueManager {
     constructor(hydra) {
@@ -33,7 +34,7 @@ export class CodeValueManager {
 
             return this._astTraverser.findValues(ast, code);
         } catch (error) {
-            console.error('Error finding values:', error);
+            Logger.error('Error finding values:', error);
             return [];
         }
     }
@@ -48,14 +49,14 @@ export class CodeValueManager {
     updateValue(index, newValue, valuePositions, lastEvalRange) {
         if (!window.cm || !lastEvalRange) return;
 
-        console.log('Updating value:', { index, newValue, lastEvalRange });
+        Logger.log('Updating value:', { index, newValue, lastEvalRange });
 
         if (index >= valuePositions.length) return;
 
         const pos = valuePositions[index];
         const cm = window.cm;
 
-        console.log('Number position info:', {
+        Logger.log('Number position info:', {
             value: pos.value,
             lineNumber: pos.lineNumber,
             characterPosition: pos.ch,
@@ -114,7 +115,7 @@ export class CodeValueManager {
             }
 
         } catch (error) {
-            console.error('Error updating value:', error);
+            Logger.error('Error updating value:', error);
             if (this._undoGroup) {
                 window.cm.endOperation();
                 this._undoGroup = null;

@@ -1,5 +1,6 @@
 // Settings page functionality for the GUI
 import { GUIUtils } from './gui-utils.js';
+import { Logger } from '../utils/logger.js';
 
 export class SettingsPage {
     constructor(hydra) {
@@ -25,6 +26,12 @@ export class SettingsPage {
         const controlsFolder = GUIUtils.createFolder(this.page, {
             title: 'Controls',
             expanded: true
+        });
+
+        // Add logging toggle
+        GUIUtils.createBinding(controlsFolder, Logger, 'isEnabled', {
+            label: 'Enable Logging',
+            view: 'boolean'
         });
 
         // Add reset button

@@ -1,19 +1,20 @@
 // Utility functions for Hydra integration
+import { Logger } from "./logger.js";
 
 // Get Hydra instance
 export const getHydra = () => {
-    console.log('getting hydra');
+    Logger.log('getting hydra');
     const whereami = window.location?.href?.includes("hydra.ojack.xyz")
         ? "editor"
         : window.atom?.packages
             ? "atom"
             : "idk";
     if (whereami === "editor") {
-        console.log('got hydra from editor', window.hydraSynth);
+        Logger.log('got hydra from editor', window.hydraSynth);
         return window.hydraSynth;
     }
     if (whereami === "atom") {
-        console.log('got hydra from atom', global.atom.packages.loadedPackages["atom-hydra"]);
+        Logger.log('got hydra from atom', global.atom.packages.loadedPackages["atom-hydra"]);
         return global.atom.packages.loadedPackages["atom-hydra"]
             .mainModule.main.hydra;
     }
@@ -26,7 +27,7 @@ export const getHydra = () => {
         window.hy
     ].find(h => h?.regl);
 
-    console.log('got hydra', _h);
+    Logger.log('got hydra', _h);
     return _h;
 };
 

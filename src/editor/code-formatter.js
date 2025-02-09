@@ -1,4 +1,5 @@
 import { generate, GENERATOR } from 'astring';
+import { Logger } from '../utils/logger.js';
 
 export class CodeFormatter {
     constructor(hydra) {
@@ -35,13 +36,13 @@ export class CodeFormatter {
 
             // Verify the generated code is valid
             if (!generatedCode || generatedCode.trim().match(/^-?\d+\.?\d*$/)) {
-                console.error('Invalid generated code:', generatedCode);
+                Logger.error('Invalid generated code:', generatedCode);
                 return code;
             }
 
             return generatedCode;
         } catch (error) {
-            console.error('Error generating code:', error);
+            Logger.error('Error generating code:', error);
             return code;
         }
     }
