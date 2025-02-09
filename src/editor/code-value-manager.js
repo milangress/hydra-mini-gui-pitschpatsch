@@ -49,16 +49,28 @@ export class CodeValueManager {
     }
 
     /**
-     * Generate a unique variable name for a value based on its context in the code
+     * Generate a unique variable name for a value based on its context in the code.
+     * Includes function name, parameter name, and position information to ensure uniqueness.
+     * 
+     * Examples:
+     * - osc(10, 0.5) -> osc_freq_line1_pos3_value, osc_sync_line1_pos7_value
+     * - osc(10).rotate(6.22) -> osc_freq_line1_pos3_value, rotate_angle_line1_pos12_value
+     * 
      * @param {Object} valuePosition - Position information for the value
      * @param {string} valuePosition.functionName - Name of the function containing the value
+     * @param {string} valuePosition.paramName - Name of the parameter (from transform definition)
      * @param {number} valuePosition.lineNumber - Line number where the value appears
      * @param {number} valuePosition.functionStartCh - Starting character position of the function
-     * @returns {string} Generated variable name
+     * @param {number} valuePosition.ch - Character position of the value
+     * @returns {string} Generated unique variable name
      * @private
      */
     _generateVariableName(valuePosition) {
-        return `${valuePosition.functionName}_line${valuePosition.lineNumber}_pos${valuePosition.functionStartCh}_value`;
+        const paramPart = valuePosition.paramName ? 
+            `_${valuePosition.paramName}` : 
+            `_param${valuePosition.parameterIndex}`;
+            
+        return `${valuePosition.functionName}${paramPart}_line${valuePosition.lineNumber}_pos${valuePosition.ch}_value`;
     }
 
     /**

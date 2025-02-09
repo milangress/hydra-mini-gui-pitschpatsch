@@ -38,59 +38,44 @@ export class ASTTraverser {
      * @private
      */
     _getFunctionNameFromAST(node, parents) {
-        // Find the root of the method chain
-        let chainRoot = null;
-        let functionStartCh = null;
+        // For nested calls like solid(1).add(osc(10)), we want osc not solid
+        // Find the innermost CallExpression that contains our node
+        let targetCallExpr = null;
+
+        // First, find the CallExpression that directly contains our node
         for (let i = parents.length - 1; i >= 0; i--) {
-            const p = parents[i];
-            if (p.type === 'CallExpression') {
-                if (p.callee.type === 'Identifier') {
-                    chainRoot = p;
-                    functionStartCh = p.callee.loc.start.column;
-                    break;
-                }
-                // If we find a member expression that's not part of a method chain, this is our root
-                if (p.callee.type === 'MemberExpression' && !p.callee.object.property) {
-                    chainRoot = p;
-                    functionStartCh = p.callee.property.loc.start.column;
+            const parent = parents[i];
+            if (parent.type === 'CallExpression') {
+                // Check if this call expression contains our node in its arguments
+                const containsNode = parent.arguments.some(arg => {
+                    // Direct match
+                    if (arg === node) return true;
+                    // Match through UnaryExpression (for negative numbers)
+                    if (arg.type === 'UnaryExpression' && arg.argument === node) return true;
+                    return false;
+                });
+
+                if (containsNode) {
+                    targetCallExpr = parent;
                     break;
                 }
             }
         }
 
-        // If we found a chain root, use that for grouping
-        if (chainRoot) {
-            if (chainRoot.callee.type === 'Identifier') {
-                return {
-                    name: chainRoot.callee.name,
-                    startCh: functionStartCh
-                };
-            }
-            if (chainRoot.callee.type === 'MemberExpression') {
-                return {
-                    name: chainRoot.callee.property.name,
-                    startCh: functionStartCh
-                };
-            }
+        if (!targetCallExpr) return null;
+
+        // Get the function name from the target call expression
+        if (targetCallExpr.callee.type === 'Identifier') {
+            return {
+                name: targetCallExpr.callee.name,
+                startCh: targetCallExpr.callee.loc.start.column
+            };
         }
-
-        // Fallback to immediate parent if no chain root found
-        const parent = parents[parents.length - 1];
-        if (!parent) return null;
-
-        if (parent.type === 'CallExpression') {
-            if (parent.callee.type === 'Identifier') {
-                return {
-                    name: parent.callee.name,
-                    startCh: parent.callee.loc.start.column
-                };
-            }
-            if (parent.callee.type === 'MemberExpression') {
-                return {
-                    name: parent.callee.property.name,
-                    startCh: parent.callee.property.loc.start.column
-                };
-            }
+        if (targetCallExpr.callee.type === 'MemberExpression') {
+            return {
+                name: targetCallExpr.callee.property.name,
+                startCh: targetCallExpr.callee.property.loc.start.column
+            };
         }
 
         return null;
@@ -139,145 +124,170 @@ export class ASTTraverser {
      *   @returns {string[]} [.options] - Available options for source/output references
      */
     findValues(ast, code) {
+        if (!ast || !code) return [];
+
         const matches = [];
         let currentIndex = 0;
 
-        // Get available sources and outputs from hydra
-        const availableOutputs = Array.from({ length: 4 }, (_, i) => this.hydra?.o?.[i]?.label || `o${i}`);
-        const availableSources = Array.from({ length: 4 }, (_, i) => this.hydra?.s?.[i]?.label || `s${i}`);
+        try {
+            // Get available sources and outputs from hydra
+            const availableOutputs = Array.from({ length: 4 }, (_, i) => this.hydra?.o?.[i]?.label || `o${i}`);
+            const availableSources = Array.from({ length: 4 }, (_, i) => this.hydra?.s?.[i]?.label || `s${i}`);
 
-        // Bind the instance methods we need in the traveler
-        const getFunctionName = this._getFunctionNameFromAST.bind(this);
-        const getParamCount = this._getParameterCount.bind(this);
-        const hydra = this.hydra;
+            // Bind the instance methods we need in the traveler
+            const getFunctionName = this._getFunctionNameFromAST.bind(this);
+            const getParamCount = this._getParameterCount.bind(this);
+            const hydra = this.hydra;
 
-        const traveler = makeTraveler({
-            /**
-             * Main traversal function that processes each node in the AST.
-             * Handles both numeric literals and source/output identifiers.
-             * 
-             * @param {Object} node - Current AST node
-             * @param {Object} state - Traversal state containing parents array and hydra instance
-             */
-            go: function(node, state) {
-                // Handle numeric literals
-                if (node.type === 'Literal' && typeof node.value === 'number') {
-                    const line = code.split('\n')[node.loc.start.line - 1];
-                    if (!line?.includes('loadScript')) {
-                        const lineStart = node.loc.start.line - 1;
-                        
-                        // Try to get function name from AST first
-                        let functionInfo = getFunctionName(node, state.parents);
-                        let paramCount = getParamCount(node, state.parents);
+            const traveler = makeTraveler({
+                /**
+                 * Main traversal function that processes each node in the AST.
+                 * Handles both numeric literals and source/output identifiers.
+                 * 
+                 * @param {Object} node - Current AST node
+                 * @param {Object} state - Traversal state containing parents array and hydra instance
+                 */
+                go: function(node, state) {
+                    if (!node || typeof node !== 'object') return;
 
-                        // Fall back to regex if AST method fails
-                        if (!functionInfo) {
-                            const beforeContent = line.substring(0, node.loc.start.column);
-                            const name = extractFunctionNameFromCode(beforeContent);
-                            if (name) {
-                                functionInfo = {
-                                    name,
-                                    startCh: beforeContent.lastIndexOf(name)
-                                };
-                            }
-                            if (!paramCount) {
-                                const lastDotIndex = beforeContent.lastIndexOf('.');
-                                if (lastDotIndex !== -1) {
-                                    const afterFunction = beforeContent.slice(lastDotIndex + 1);
-                                    paramCount = countParametersBeforePosition(afterFunction);
+                    // Handle numeric literals
+                    if (node.type === 'Literal' && typeof node.value === 'number') {
+                        const line = code.split('\n')[node.loc?.start?.line - 1];
+                        if (!line?.includes('loadScript')) {
+                            const lineStart = (node.loc?.start?.line ?? 1) - 1;
+                            
+                            // Try to get function name from AST first
+                            let functionInfo = getFunctionName(node, state.parents || []);
+                            let paramCount = getParamCount(node, state.parents || []);
+
+                            // Fall back to regex if AST method fails
+                            if (!functionInfo && line) {
+                                const beforeContent = line.substring(0, node.loc?.start?.column ?? 0);
+                                const name = extractFunctionNameFromCode(beforeContent);
+                                if (name) {
+                                    functionInfo = {
+                                        name,
+                                        startCh: beforeContent.lastIndexOf(name)
+                                    };
+                                }
+                                if (!paramCount) {
+                                    const lastDotIndex = beforeContent.lastIndexOf('.');
+                                    if (lastDotIndex !== -1) {
+                                        const afterFunction = beforeContent.slice(lastDotIndex + 1);
+                                        paramCount = countParametersBeforePosition(afterFunction);
+                                    }
                                 }
                             }
+
+                            // Only add if we found a valid function context
+                            if (functionInfo) {
+                                // Get transform info for parameter name
+                                const transform = state.hydra?.generator?.glslTransforms?.[functionInfo.name];
+                                const paramInfo = transform?.inputs?.[paramCount];
+                                const paramName = paramInfo?.name || `val${paramCount + 1}`;
+                                const paramType = paramInfo?.type;
+                                const paramDefault = paramInfo?.default;
+
+                                // Check for unary minus operator
+                                let value = node.value;
+                                let startColumn = node.loc?.start?.column ?? 0;
+                                let length = (node.loc?.end?.column ?? 0) - startColumn;
+                                
+                                // If there's a unary minus before this number
+                                const parent = state.parents[state.parents.length - 1];
+                                if (parent?.type === 'UnaryExpression' && parent.operator === '-') {
+                                    value = -value;
+                                    startColumn = parent.loc?.start?.column ?? 0;
+                                    length = (parent.loc?.end?.column ?? 0) - startColumn;
+                                }
+
+                                matches.push({
+                                    value,
+                                    lineNumber: lineStart,
+                                    ch: startColumn,
+                                    length,
+                                    index: currentIndex++,
+                                    functionName: functionInfo.name,
+                                    functionStartCh: functionInfo.startCh,
+                                    parameterIndex: paramCount,
+                                    paramName,
+                                    paramType,
+                                    paramDefault,
+                                    type: 'number'
+                                });
+                            }
                         }
-
-                        // Get transform info for parameter name
-                        const transform = state.hydra?.generator?.glslTransforms?.[functionInfo?.name];
-                        const paramInfo = transform?.inputs?.[paramCount];
-                        const paramName = paramInfo?.name || `val${paramCount + 1}`;
-                        const paramType = paramInfo?.type;
-                        const paramDefault = paramInfo?.default;
-
-                        matches.push({
-                            value: node.value,
-                            lineNumber: lineStart,
-                            ch: node.loc.start.column,
-                            length: node.loc.end.column - node.loc.start.column,
-                            index: currentIndex++,
-                            functionName: functionInfo?.name,
-                            functionStartCh: functionInfo?.startCh,
-                            parameterIndex: paramCount,
-                            paramName,
-                            paramType,
-                            paramDefault,
-                            type: 'number'
-                        });
                     }
-                }
-                // Handle source/output references
-                else if (node.type === 'Identifier') {
-                    const name = node.name;
-                    const isOutput = availableOutputs.includes(name);
-                    const isSource = availableSources.includes(name);
+                    // Handle source/output references
+                    else if (node.type === 'Identifier') {
+                        const name = node.name;
+                        const isOutput = availableOutputs.includes(name);
+                        const isSource = availableSources.includes(name);
+                        
+                        if (isOutput || isSource) {
+                            const lineStart = node.loc.start.line - 1;
+                            const line = code.split('\n')[lineStart];
+                            
+                            // Try to get function name from AST first
+                            let functionInfo = getFunctionName(node, state.parents || []);
+                            let paramCount = getParamCount(node, state.parents || []);
+
+                            // Fall back to regex if AST method fails
+                            if (!functionInfo && line) {
+                                const beforeContent = line.substring(0, node.loc.start.column);
+                                const name = extractFunctionNameFromCode(beforeContent);
+                                if (name) {
+                                    functionInfo = {
+                                        name,
+                                        startCh: beforeContent.lastIndexOf(name)
+                                    };
+                                }
+                                if (!paramCount) {
+                                    const lastDotIndex = beforeContent.lastIndexOf('.');
+                                    if (lastDotIndex !== -1) {
+                                        const afterFunction = beforeContent.slice(lastDotIndex + 1);
+                                        paramCount = countParametersBeforePosition(afterFunction);
+                                    }
+                                }
+                            }
+
+                            // Get transform info for parameter name
+                            const transform = state.hydra?.generator?.glslTransforms?.[functionInfo?.name];
+                            const paramInfo = transform?.inputs?.[paramCount];
+                            const paramName = paramInfo?.name || `val${paramCount + 1}`;
+                            const paramType = paramInfo?.type;
+                            const paramDefault = paramInfo?.default;
+
+                            matches.push({
+                                value: name,
+                                lineNumber: lineStart,
+                                ch: node.loc.start.column,
+                                length: node.loc.end.column - node.loc.start.column,
+                                index: currentIndex++,
+                                functionName: functionInfo?.name,
+                                functionStartCh: functionInfo?.startCh,
+                                parameterIndex: paramCount,
+                                paramName,
+                                paramType,
+                                paramDefault,
+                                type: isOutput ? 'output' : 'source',
+                                options: isOutput ? availableOutputs : availableSources
+                            });
+                        }
+                    }
                     
-                    if (isOutput || isSource) {
-                        const lineStart = node.loc.start.line - 1;
-                        const line = code.split('\n')[lineStart];
-                        
-                        // Try to get function name from AST first
-                        let functionInfo = getFunctionName(node, state.parents);
-                        let paramCount = getParamCount(node, state.parents);
-
-                        // Fall back to regex if AST method fails
-                        if (!functionInfo) {
-                            const beforeContent = line.substring(0, node.loc.start.column);
-                            const name = extractFunctionNameFromCode(beforeContent);
-                            if (name) {
-                                functionInfo = {
-                                    name,
-                                    startCh: beforeContent.lastIndexOf(name)
-                                };
-                            }
-                            if (!paramCount) {
-                                const lastDotIndex = beforeContent.lastIndexOf('.');
-                                if (lastDotIndex !== -1) {
-                                    const afterFunction = beforeContent.slice(lastDotIndex + 1);
-                                    paramCount = countParametersBeforePosition(afterFunction);
-                                }
-                            }
-                        }
-
-                        // Get transform info for parameter name
-                        const transform = state.hydra?.generator?.glslTransforms?.[functionInfo?.name];
-                        const paramInfo = transform?.inputs?.[paramCount];
-                        const paramName = paramInfo?.name || `val${paramCount + 1}`;
-                        const paramType = paramInfo?.type;
-                        const paramDefault = paramInfo?.default;
-
-                        matches.push({
-                            value: name,
-                            lineNumber: lineStart,
-                            ch: node.loc.start.column,
-                            length: node.loc.end.column - node.loc.start.column,
-                            index: currentIndex++,
-                            functionName: functionInfo?.name,
-                            functionStartCh: functionInfo?.startCh,
-                            parameterIndex: paramCount,
-                            paramName,
-                            paramType,
-                            paramDefault,
-                            type: isOutput ? 'output' : 'source',
-                            options: isOutput ? availableOutputs : availableSources
-                        });
-                    }
+                    const oldParents = state.parents || [];
+                    state.parents = [...oldParents, node];
+                    this.super.go.call(this, node, state);
+                    state.parents = oldParents;
                 }
-                
-                const oldParents = state.parents;
-                state.parents = [...oldParents, node];
-                this.super.go.call(this, node, state);
-                state.parents = oldParents;
-            }
-        });
+            });
 
-        traveler.go(ast, { parents: [], hydra });
+            traveler.go(ast, { parents: [], hydra });
+        } catch (error) {
+            Logger.error('Error finding values:', error);
+        }
+
         return matches;
     }
 } 

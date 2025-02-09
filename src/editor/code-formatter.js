@@ -53,10 +53,10 @@ export class CodeFormatter {
      * @throws {Error} If code generation fails or produces invalid output
      */
     generateCode(ast, code, valueMap, comments = []) {
+        if (!ast || !code) return code;
+        valueMap = valueMap || new Map();
+
         try {
-            console.log('generateCode', ast, code, valueMap, comments);
-            const lines = code.split('\n');
-            
             // Store exact positions of numbers and formatting
             const originalStructure = this._analyzeCodeStructure(code);
 
