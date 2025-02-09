@@ -1,9 +1,25 @@
 // Simple Bun server for development
 const code = `await loadScript("http://localhost:3000/hydra-mini-gui.js")
 
-osc(40,0.1,0.8)
+osc(82,0.09,0.89999)
   .rotate(0.5)
-  .out()`;
+  .out()
+
+osc(400,1.02).scroll(0).out()
+
+src(o0)
+  .modulate(
+    osc(6,0,1.5).modulate(noise(3).sub(gradient()),1)
+    .brightness(-0.5)
+  ,0.003)
+  .layer(
+  osc(30,0.1,1.5).mask(shape(4,0.3,0))
+  ).out(o0)
+
+var epsilon=0.003
+var func = () => noise(9.9,0.35)
+solid(3.45,0,255).layer(func().luma(-epsilon,0)).out(o0)
+`;
 
 const encodedCode = btoa(code);
 const hydraUrl = `https://hydra.ojack.xyz/?code=${encodedCode}`;
