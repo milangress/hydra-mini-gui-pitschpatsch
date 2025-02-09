@@ -15,6 +15,16 @@ style.textContent = `
 .error-message .tp-lblv_v {
     color: #ff0000 !important;
 }
+    #hydra-mini-gui::-webkit-scrollbar {
+    width: 0px;
+}
+    .tp-tbpv_c {
+    max-height: 80vh;
+    overflow-y: auto;
+    }
+    .tp-tbpv_c::-webkit-scrollbar {
+    width: 0px;
+}   
 `;
 document.head.appendChild(style);
 
@@ -56,7 +66,7 @@ export class GUIManager {
         const container = this.gui.element;
         container.style.zIndex = '9999';
         container.style.position = 'fixed';
-        container.style.top = '10px';
+        container.style.top = '50px';
         container.style.right = '10px';
         container.classList.add('hydra-ui'); // Add Hydra's UI class
         container.setAttribute('id', 'hydra-mini-gui'); // Add specific ID

@@ -1,5 +1,5 @@
 export class Logger {
-    static isEnabled = false;
+    static isEnabled = true;
 
     static log(...args) {
         if (this.isEnabled) {
