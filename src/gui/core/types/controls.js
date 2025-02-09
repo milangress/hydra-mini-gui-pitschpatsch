@@ -4,16 +4,47 @@
  * @property {any} value - The current value
  * @property {any} defaultValue - The default value
  * @property {Function} onChange - Callback for value changes
- * @property {Object} options - Additional control options
+ * @property {ControlOptions} options - Additional control options
  */
 
 /**
- * @typedef {Object} ControlOptions
- * @property {number} [min] - Minimum value for number controls
- * @property {number} [max] - Maximum value for number controls
- * @property {number} [step] - Step value for number controls
+ * @typedef {Object} BaseControlOptions
  * @property {string} [label] - Label to display
  * @property {boolean} [readonly] - Whether the control is read-only
+ */
+
+/**
+ * @typedef {Object} NumberControlOptions
+ * @property {string} [label] - Label to display
+ * @property {number} [min] - Minimum value
+ * @property {number} [max] - Maximum value
+ * @property {number} [step] - Step value
+ * @property {'number' | 'select'} [type] - Type of number control
+ * @property {any[]} [values] - Values for select type
+ */
+
+/**
+ * @typedef {Object} PointControlOptions
+ * @property {string} [label] - Label to display
+ * @property {Object} x - X axis options
+ * @property {number} x.min - Minimum X value
+ * @property {number} x.max - Maximum X value
+ * @property {number} x.step - X step value
+ * @property {Object} y - Y axis options
+ * @property {number} y.min - Minimum Y value
+ * @property {number} y.max - Maximum Y value
+ * @property {number} y.step - Y step value
+ * @property {'normal' | 'centered' | 'extended'} [mode] - Point mapping mode
+ */
+
+/**
+ * @typedef {Object} ColorControlOptions
+ * @property {string} [label] - Label to display
+ * @property {'float' | 'rgb'} [type] - Color value type
+ */
+
+/**
+ * @typedef {BaseControlOptions | NumberControlOptions | PointControlOptions | ColorControlOptions} ControlOptions
  */
 
 /**
@@ -22,7 +53,7 @@
  * @property {Object} controller - The Tweakpane controller
  * @property {any} originalValue - The original value
  * @property {boolean} [isColor] - Whether this is a color control
- * @property {string} [colorComponent] - The color component (r,g,b,a)
+ * @property {string} [colorComponent] - The color component (r,g,b)
  * @property {boolean} [isPoint] - Whether this is a point control
  * @property {string} [pointKey] - The point key (point, pos, etc)
  * @property {string} [pointComponent] - The point component (x,y)

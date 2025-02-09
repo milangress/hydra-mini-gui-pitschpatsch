@@ -11,7 +11,21 @@ export class BaseControl {
         this.value = config.value;
         this.defaultValue = config.defaultValue;
         this.onChange = config.onChange;
-        this.options = config.options || {};
+        this.parameter = config.parameter;
+        this.options = this._processOptions(config.options || {});
+    }
+
+    /**
+     * Process control options
+     * @protected
+     * @param {import('../types/controls.js').BaseControlOptions} options 
+     * @returns {import('../types/controls.js').BaseControlOptions}
+     */
+    _processOptions(options) {
+        return {
+            label: options.label || this.parameter?.paramName || this.name,
+            readonly: options.readonly || false
+        };
     }
 
     /**
@@ -26,13 +40,22 @@ export class BaseControl {
 
         controller.on('change', event => {
             this.value = event.value;
-            this.onChange?.(this.name, this.value);
+            this.onChange?.(this.parameter?.index || this.name, this.value);
         });
+
+        if (controller.element) {
+            controller.element.setAttribute('data-hydra-param', this.name);
+            const input = controller.element.querySelector('input');
+            if (input) {
+                input.setAttribute('data-hydra-input', this.name);
+            }
+        }
 
         return {
             binding: obj,
             controller,
-            originalValue: this.defaultValue
+            originalValue: this.defaultValue,
+            parameter: this.parameter
         };
     }
 

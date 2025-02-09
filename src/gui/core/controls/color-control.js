@@ -2,7 +2,8 @@ import { BaseControl } from './base-control.js';
 import { Logger } from '../../../utils/logger.js';
 
 /**
- * Control for color values (r,g,b,a)
+ * Control for color values (r,g,b)
+ * Groups r, g, b parameters into a single color picker
  */
 export class ColorControl extends BaseControl {
     /**
@@ -11,11 +12,24 @@ export class ColorControl extends BaseControl {
      */
     constructor(config) {
         super(config);
-        
-        // Set default options for color controls
-        this.options = {
-            color: { type: 'float' },
-            ...this.options
+        this.originalValues = {
+            r: config.value,
+            g: config.value,
+            b: config.value
+        };
+    }
+
+    /**
+     * Process control options
+     * @protected
+     * @param {import('../types/controls.js').ColorControlOptions} options 
+     * @returns {import('../types/controls.js').ColorControlOptions}
+     */
+    _processOptions(options) {
+        const baseOptions = super._processOptions(options);
+        return {
+            ...baseOptions,
+            type: options.type || 'float'
         };
     }
 
@@ -23,32 +37,55 @@ export class ColorControl extends BaseControl {
      * Creates the control binding
      * @param {Object} folder - The folder to add the control to
      * @param {Object} tweakpaneAdapter - The Tweakpane adapter
-     * @returns {import('../types/controls.js').ControlBinding}
+     * @returns {import('../types/controls.js').ControlBinding[]}
      */
     createBinding(folder, tweakpaneAdapter) {
-        const obj = { color: { r: this.value, g: this.value, b: this.value, a: this.value } };
+        const obj = { 
+            color: {
+                r: this.originalValues.r,
+                g: this.originalValues.g,
+                b: this.originalValues.b
+            }
+        };
+        
         const controller = tweakpaneAdapter.createBinding(folder, obj, 'color', {
-            ...this.options,
-            label: this.options.label
+            label: this.options.label,
+            color: { type: this.options.type }
         });
 
-        // Create bindings for all color components
-        const bindings = ['r', 'g', 'b', 'a'].map(component => ({
+        controller.on('change', event => {
+            const { r, g, b } = event.value;
+            if (this.parameter) {
+                const baseIndex = this.parameter.index - (this.parameter.paramName === 'r' ? 0 : this.parameter.paramName === 'g' ? 1 : 2);
+                this.onChange?.(baseIndex, r);
+                this.onChange?.(baseIndex + 1, g);
+                this.onChange?.(baseIndex + 2, b);
+            } else {
+                this.onChange?.(this.name + '_r', r);
+                this.onChange?.(this.name + '_g', g);
+                this.onChange?.(this.name + '_b', b);
+            }
+        });
+
+        if (controller.element) {
+            controller.element.setAttribute('data-hydra-param', this.name);
+            const input = controller.element.querySelector('input');
+            if (input) {
+                input.setAttribute('data-hydra-input', this.name);
+            }
+        }
+
+        return ['r', 'g', 'b'].map((component, i) => ({
             binding: obj,
             controller,
-            originalValue: this.defaultValue,
+            originalValue: this.originalValues[component],
             isColor: true,
-            colorComponent: component
+            colorComponent: component,
+            parameter: this.parameter && {
+                ...this.parameter,
+                index: this.parameter.index - (this.parameter.paramName === 'r' ? 0 : this.parameter.paramName === 'g' ? 1 : 2) + i
+            }
         }));
-
-        // Set up change handlers
-        controller.on('change', event => {
-            Object.entries(event.value).forEach(([component, value]) => {
-                this.onChange?.(this.name + '_' + component, value);
-            });
-        });
-
-        return bindings;
     }
 
     /**
