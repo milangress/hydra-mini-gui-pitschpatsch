@@ -1,11 +1,32 @@
 import { generate, GENERATOR } from 'astring';
 import { Logger } from '../utils/logger.js';
 
+/**
+ * Handles the formatting and generation of Hydra code while preserving code structure,
+ * number precision, and formatting details like whitespace and line breaks.
+ * Provides functionality for replacing numeric values with arrow functions while
+ * maintaining the original code style.
+ */
 export class CodeFormatter {
+    /**
+     * Creates a new CodeFormatter instance
+     * @param {Object} hydra - The Hydra instance used for accessing source/output references
+     */
     constructor(hydra) {
         this.hydra = hydra;
     }
 
+    /**
+     * Formats a number with appropriate precision based on its magnitude.
+     * Uses different precision rules for different ranges:
+     * - Numbers < 1: 3 decimal places
+     * - Numbers < 10: 2 decimal places
+     * - Numbers >= 10: rounded to integers
+     * 
+     * @param {number} num - The number to format
+     * @returns {string} The formatted number as a string with appropriate precision
+     * @private
+     */
     _formatNumber(num) {
         if (Number.isNaN(num)) return 'NaN';
         if (!Number.isFinite(num)) return num > 0 ? 'Infinity' : '-Infinity';
@@ -18,8 +39,22 @@ export class CodeFormatter {
         return Math.round(num).toString();
     }
 
+    /**
+     * Generates formatted code from an AST while preserving original formatting and structure.
+     * Can replace numeric values with either static values or arrow functions based on the valueMap.
+     * 
+     * @param {Object} ast - Abstract Syntax Tree of the code
+     * @param {string} code - Original source code
+     * @param {Map<number, (number|string)>} valueMap - Map of value indices to their new values.
+     *                                                  Values can be numbers for static updates or
+     *                                                  strings for arrow function conversions
+     * @param {Array} [comments=[]] - Array of code comments to preserve
+     * @returns {string} Generated code with preserved formatting and updated values
+     * @throws {Error} If code generation fails or produces invalid output
+     */
     generateCode(ast, code, valueMap, comments = []) {
         try {
+            console.log('generateCode', ast, code, valueMap, comments);
             const lines = code.split('\n');
             
             // Store exact positions of numbers and formatting
@@ -47,6 +82,26 @@ export class CodeFormatter {
         }
     }
 
+    /**
+     * Analyzes the structure of source code to preserve formatting details during code generation.
+     * Captures information about:
+     * - Line breaks and their types (\n or \r\n)
+     * - Indentation patterns
+     * - Numeric literal positions and values
+     * - Source/output identifier positions
+     * - Dot operator positions for method chaining
+     * 
+     * @param {string} code - Source code to analyze
+     * @returns {Object} Structure containing:
+     *   @returns {string[]} .lines - Array of code lines
+     *   @returns {Array<{value: number, start: number, end: number, text: string}>} .numbers - Numeric literal positions
+     *   @returns {Array<{value: string, start: number, end: number, text: string}>} .identifiers - Source/output positions
+     *   @returns {string} .format - Original code format
+     *   @returns {Map<number, string>} .indentation - Line number to indentation mapping
+     *   @returns {Map<number, string>} .lineBreaks - Line number to line break style mapping
+     *   @returns {Map<number, number[]>} .dotOperators - Line number to dot positions mapping
+     * @private
+     */
     _analyzeCodeStructure(code) {
         const lines = code.split('\n');
         const structure = {
@@ -108,6 +163,24 @@ export class CodeFormatter {
         return structure;
     }
 
+    /**
+     * Creates a custom AST generator that preserves code formatting during generation.
+     * Handles special cases like:
+     * - Method chaining with dot operators
+     * - Function calls and their arguments
+     * - Number formatting with appropriate precision
+     * - Arrow function conversions
+     * - Source/output reference preservation
+     * 
+     * @param {Object} originalStructure - Original code structure from _analyzeCodeStructure
+     * @param {Map<number, (number|string)>} valueMap - Map of values to be replaced
+     * @returns {Object} Custom AST generator with methods for each node type:
+     *   - MemberExpression: Handles method chaining
+     *   - CallExpression: Handles function calls
+     *   - Program: Handles overall code generation
+     *   - findValues: Helper for value detection
+     * @private
+     */
     _createFormattingGenerator(originalStructure, valueMap) {
         const formattingGenerator = Object.create(GENERATOR);
         
@@ -176,9 +249,10 @@ export class CodeFormatter {
                         let formattedValue;
                         
                         if (item.type === 'number') {
+                            // Handle both number replacements and arrow function replacements
                             formattedValue = typeof newValue === 'number' ? 
                                 (newValue < 0 ? '-' + this._formatNumber(Math.abs(newValue)) : this._formatNumber(newValue)) :
-                                item.text;
+                                newValue; // Use string value directly if it's not a number (e.g. arrow function)
                         } else {
                             formattedValue = typeof newValue === 'string' ? newValue : item.text;
                         }

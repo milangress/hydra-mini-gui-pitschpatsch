@@ -1,11 +1,42 @@
 import { makeTraveler } from 'astravel';
 import { extractFunctionNameFromCode, countParametersBeforePosition } from '../../utils/code-utils.js';
 
+/**
+ * Traverses Abstract Syntax Trees (AST) of Hydra code to analyze and extract information
+ * about numeric values, function calls, and parameter positions. Handles complex method
+ * chaining patterns and maintains context during traversal.
+ * 
+ * Key features:
+ * - Tracks function call chains (e.g., osc().color().out())
+ * - Identifies parameter positions within function calls
+ * - Extracts metadata about values (numbers, sources, outputs)
+ * - Maintains parent-child relationships during traversal
+ */
 export class ASTTraverser {
+    /**
+     * Creates a new ASTTraverser instance
+     * @param {Object} hydra - The Hydra instance used for accessing transform definitions and source/output references
+     */
     constructor(hydra) {
         this.hydra = hydra;
     }
 
+    /**
+     * Extracts the function name and starting position from an AST node within a method chain.
+     * Handles both standalone function calls and method chains.
+     * 
+     * Examples of supported patterns:
+     * - Standalone: osc(10)
+     * - Method chain: osc(10).color(1,1).out()
+     * - Nested: solid(1).add(osc(10), 0.5)
+     * 
+     * @param {Object} node - The current AST node being analyzed
+     * @param {Array<Object>} parents - Array of parent nodes in the AST, from root to immediate parent
+     * @returns {Object|null} Function information containing:
+     *   @returns {string} .name - The name of the function
+     *   @returns {number} .startCh - Starting character position of the function
+     * @private
+     */
     _getFunctionNameFromAST(node, parents) {
         // Find the root of the method chain
         let chainRoot = null;
@@ -65,6 +96,15 @@ export class ASTTraverser {
         return null;
     }
 
+    /**
+     * Determines the parameter index of a node within its parent function call.
+     * For example, in color(1, 0.5, 1), the '0.5' value has parameter index 1.
+     * 
+     * @param {Object} node - The current AST node (typically a Literal or Identifier)
+     * @param {Array<Object>} parents - Array of parent nodes in the AST
+     * @returns {number} Zero-based index of the parameter, or total parameter count if node isn't a parameter
+     * @private
+     */
     _getParameterCount(node, parents) {
         const parent = parents[parents.length - 1];
         if (!parent || parent.type !== 'CallExpression') return 0;
@@ -73,6 +113,31 @@ export class ASTTraverser {
         return paramIndex === -1 ? parent.arguments.length : paramIndex;
     }
 
+    /**
+     * Traverses an AST to find all numeric values, source references, and output references.
+     * For each value found, collects detailed metadata including:
+     * - Value and its type (number, source, output)
+     * - Position in code (line, column, length)
+     * - Containing function and parameter information
+     * - Parameter metadata from Hydra transform definitions
+     * 
+     * @param {Object} ast - The AST to traverse
+     * @param {string} code - Original source code (used for position information)
+     * @returns {Array<Object>} Array of value matches, each containing:
+     *   @returns {number|string} .value - The actual value found
+     *   @returns {number} .lineNumber - Zero-based line number
+     *   @returns {number} .ch - Character position in line
+     *   @returns {number} .length - Length of the value in characters
+     *   @returns {number} .index - Sequential index of the value
+     *   @returns {string} .functionName - Name of the containing function
+     *   @returns {number} .functionStartCh - Starting character of the function
+     *   @returns {number} .parameterIndex - Position in function parameters
+     *   @returns {string} .paramName - Parameter name from transform definition
+     *   @returns {string} .paramType - Parameter type from transform definition
+     *   @returns {*} .paramDefault - Default value from transform definition
+     *   @returns {'number'|'source'|'output'} .type - Type of value found
+     *   @returns {string[]} [.options] - Available options for source/output references
+     */
     findValues(ast, code) {
         const matches = [];
         let currentIndex = 0;
@@ -87,6 +152,13 @@ export class ASTTraverser {
         const hydra = this.hydra;
 
         const traveler = makeTraveler({
+            /**
+             * Main traversal function that processes each node in the AST.
+             * Handles both numeric literals and source/output identifiers.
+             * 
+             * @param {Object} node - Current AST node
+             * @param {Object} state - Traversal state containing parents array and hydra instance
+             */
             go: function(node, state) {
                 // Handle numeric literals
                 if (node.type === 'Literal' && typeof node.value === 'number') {
