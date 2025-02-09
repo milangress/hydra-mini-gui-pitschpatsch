@@ -66,6 +66,7 @@ export class CodeValueManager {
             afterNumber: cm.getLine(pos.lineNumber).substring(pos.ch + pos.length, pos.ch + pos.length + 20)
         });
 
+        // Set flag before any updates
         this.isUpdating = true;
         this.valuePositions = valuePositions;
         this._pendingChanges.push({
@@ -82,7 +83,10 @@ export class CodeValueManager {
             });
 
             const newCode = this._codeFormatter.generateCode(ast, code, new Map([[index, newValue]]));
-            if (!newCode) return;
+            if (!newCode) {
+                this.isUpdating = false;
+                return;
+            }
 
             // Handle CodeMirror operations
             if (!this._undoGroup) {

@@ -25,6 +25,25 @@ export const hookIntoHydraEditor = function() {
             // Get the CodeMirror instance
             const cm = window.cm;
 
+            // Add change event listener
+            cm.on('change', (cm, change) => {
+                // Skip if this change is from our own updates
+                if (this.codeManager?.isUpdating) return;
+                
+                // Only update if we have a last eval range
+                if (this.lastEvalRange) {
+                    // Check if the change is within our last eval range
+                    const changeInRange = (
+                        change.from.line >= this.lastEvalRange.start.line &&
+                        change.to.line <= this.lastEvalRange.end.line
+                    );
+                    
+                    if (changeInRange) {
+                        this.onCodeChange();
+                    }
+                }
+            });
+
             // Add getCurrentBlock function
             const getCurrentBlock = () => {
                 const pos = cm.getCursor();
