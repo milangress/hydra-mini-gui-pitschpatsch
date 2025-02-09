@@ -119,7 +119,10 @@ export class ASTTraverser {
 
                         // Get transform info for parameter name
                         const transform = state.hydra?.generator?.glslTransforms?.[functionInfo?.name];
-                        const paramName = transform?.inputs?.[paramCount]?.name || `val${paramCount + 1}`;
+                        const paramInfo = transform?.inputs?.[paramCount];
+                        const paramName = paramInfo?.name || `val${paramCount + 1}`;
+                        const paramType = paramInfo?.type;
+                        const paramDefault = paramInfo?.default;
 
                         matches.push({
                             value: node.value,
@@ -131,6 +134,8 @@ export class ASTTraverser {
                             functionStartCh: functionInfo?.startCh,
                             parameterIndex: paramCount,
                             paramName,
+                            paramType,
+                            paramDefault,
                             type: 'number'
                         });
                     }
@@ -170,7 +175,10 @@ export class ASTTraverser {
 
                         // Get transform info for parameter name
                         const transform = state.hydra?.generator?.glslTransforms?.[functionInfo?.name];
-                        const paramName = transform?.inputs?.[paramCount]?.name || `val${paramCount + 1}`;
+                        const paramInfo = transform?.inputs?.[paramCount];
+                        const paramName = paramInfo?.name || `val${paramCount + 1}`;
+                        const paramType = paramInfo?.type;
+                        const paramDefault = paramInfo?.default;
 
                         matches.push({
                             value: name,
@@ -182,6 +190,8 @@ export class ASTTraverser {
                             functionStartCh: functionInfo?.startCh,
                             parameterIndex: paramCount,
                             paramName,
+                            paramType,
+                            paramDefault,
                             type: isOutput ? 'output' : 'source',
                             options: isOutput ? availableOutputs : availableSources
                         });
