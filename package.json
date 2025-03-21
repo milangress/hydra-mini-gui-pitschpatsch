@@ -17,6 +17,7 @@
   ],
   "scripts": {
     "dev": "bun run build:watch & bun run --watch server.js",
+    "dev:allFunc": "TEST_MODE=allFunc bun run start",
     "start": "bun run build && bun run server.js",
     "build": "bun run build.js",
     "build:watch": "bun build ./src/index.js --outfile=dist/hydra-pitschpatsch.js --watch",

@@ -1,4 +1,4 @@
-
+// Comprehensive test cases for all Hydra functions
 export const code = `await loadScript("http://localhost:3000/hydra-pitschpatsch.js")
 
 osc(60, 0.1, 0.8).out()
