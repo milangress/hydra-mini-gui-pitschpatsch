@@ -1,4 +1,5 @@
-import { signal, computed, effect, batch } from '@preact/signals-core';
+import { signal, computed, batch } from '@preact/signals-core';
+import { Logger } from '../utils/logger.js';
 
 /**
  * Central state management for Hydra Mini GUI using signals
@@ -11,8 +12,11 @@ export const lastEvalRange = signal(null);
 export const valuePositions = signal([]);
 
 // GUI state
-export const parameters = signal({});
-export const settings = signal({});
+export const parameters = signal(new Map());
+export const settings = signal({
+    isReset: false,
+    showSettings: false
+});
 export const errors = signal([]);
 export const layout = signal({
     position: { top: '50px', right: '10px' },
@@ -23,67 +27,25 @@ export const layout = signal({
 export const hasErrors = computed(() => errors.value.length > 0);
 export const hasParameters = computed(() => valuePositions.value.length > 0);
 
-// Effects for syncing state
-effect(() => {
-    // When parameters change, update the code through CodeValueManager
-    // This will be connected later when we refactor the CodeValueManager
-    const params = parameters.value;
-    // TODO: Implement parameter -> code sync
-});
-
 /**
  * Action creators - these replace the old dispatch actions
  */
 export const actions = {
-    updateParameter: (name, value) => {
-        batch(() => {
-            parameters.value = { ...parameters.value, [name]: value };
-        });
+    updateCode: (code) => currentCode.value = code,
+    updateEvalCode: (code) => currentEvalCode.value = code,
+    updateEvalRange: (range) => lastEvalRange.value = range,
+    updateValuePositions: (positions) => valuePositions.value = positions,
+    updateParameter: (key, value) => {
+        const newParams = new Map(parameters.value);
+        newParams.set(key, value);
+        parameters.value = newParams;
     },
-
-    updateSettings: (newSettings) => {
-        batch(() => {
-            settings.value = { ...settings.value, ...newSettings };
-        });
-    },
-
-    setError: (error) => {
-        batch(() => {
-            errors.value = [...errors.value, error];
-        });
-    },
-
-    clearError: (error) => {
-        batch(() => {
-            errors.value = errors.value.filter(err => err !== error);
-        });
-    },
-
-    clearErrors: () => {
-        batch(() => {
-            errors.value = [];
-        });
-    },
-
+    updateSettings: (newSettings) => settings.value = { ...settings.value, ...newSettings },
+    setError: (error) => errors.value = [error],
+    clearErrors: () => errors.value = [],
     updateLayout: (newLayout) => {
         batch(() => {
             layout.value = { ...layout.value, ...newLayout };
-        });
-    },
-
-    // Editor actions
-    updateCode: (code, evalRange) => {
-        batch(() => {
-            currentCode.value = code;
-            if (evalRange) {
-                lastEvalRange.value = evalRange;
-            }
-        });
-    },
-
-    updateValuePositions: (positions) => {
-        batch(() => {
-            valuePositions.value = positions;
         });
     }
 }; 

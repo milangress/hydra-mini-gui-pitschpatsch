@@ -4,6 +4,8 @@ import { ASTTraverser } from './ast/ast-traverser.js';
 import { CodeFormatter } from './code-formatter.js';
 import { Logger } from '../utils/logger.js';
 import { removeLoadScriptLines } from '../utils/code-utils.js';
+import { effect } from '@preact/signals-core';
+import { parameters, valuePositions, lastEvalRange } from '../state/signals.js';
 
 /**
  * Manages the finding and updating of numeric values in Hydra code, handling both static values
@@ -26,6 +28,24 @@ export class CodeValueManager {
         
         this._astTraverser = new ASTTraverser(hydra);
         this._codeFormatter = new CodeFormatter(hydra);
+
+        // Watch for parameter changes and update code accordingly
+        effect(() => {
+            const params = parameters.value;
+            if (!params.size || this.isUpdating) return;
+
+            for (const [key, value] of params) {
+                const index = parseInt(key.replace('value', ''));
+                if (!isNaN(index)) {
+                    this.updateValue(
+                        index,
+                        value,
+                        valuePositions.value,
+                        lastEvalRange.value
+                    );
+                }
+            }
+        });
     }
 
     /**
