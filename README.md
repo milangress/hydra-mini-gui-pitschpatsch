@@ -1,6 +1,6 @@
 # hydra-mini-gui
 
-A script for Hydra that magically turns your code into an little sliders! It automatically creates a floating GUI that makes all your parameters draggable and tweakable in real-time.
+A script for Hydra <https://hydra.ojack.xyz> that magically turns your code into an little sliders! It automatically creates a floating GUI that makes all your parameters draggable and tweakable in real-time.
 
 ![Demo](doc/demo.gif)
 

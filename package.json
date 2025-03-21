@@ -1,11 +1,20 @@
 {
   "name": "hydra-pitschpatsch",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "description": "Creates a mini gui for hydra-synth",
+  "tags": [
+    "hydra",
+    "hydra-synth",
+    "gui",
+    "live-coding"
+  ],
   "license": "ISC",
   "author": "Milan Gress",
   "type": "module",
   "main": "dist/hydra-pitschpatsch.js",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "bun run build:watch & bun run --watch server.js",
     "start": "bun run build && bun run server.js",
