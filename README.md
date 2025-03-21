@@ -1,20 +1,26 @@
 # hydra-mini-gui
 
-A plugin for Hydra that automatically creates a GUI interface for controlling numeric values in your code.
+A plugin for Hydra that automatically creates a GUI interface so all your parameters become draggable.
 
-
+![Demo](doc/demo.gif)
 
 ## Loading
 
 Run this line inside the Hydra editor to load the extension:
 
 ```js
-await loadScript("https://path-to-your-hosted-file/hydra-mini-gui.js")
+await loadScript("https://hydra-gui.milan.place/hydra-mini-gui.js")
 ```
+
+Demo: <https://hydra-gui.milan.place>
 
 ## Overview
 
 This extension creates a floating GUI panel that lets you control numeric values in your Hydra code using sliders and other controls. It automatically detects numbers in your code and creates appropriate controls.
+
+Pitsch patch is the noise german people make stepping in pfützen. Hydra Pitschpatch has the same energy… hooking itself the hydra editor capturing your run code shortcuts and replaying them with manipulated code.
+
+Might damage your code. (Sometimes the number it inserts bac into the code can be longer than it expected ov erwriting a vew letters)
 
 ## Features
 
@@ -41,6 +47,7 @@ osc(40,0.1,0.8)
 ```
 
 Will create sliders for:
+
 - `40` (frequency)
 - `0.1` (sync)
 - `0.8` (offset)
@@ -48,4 +55,4 @@ Will create sliders for:
 
 ## Development
 
-This is an experimental plugin. Please report any issues or feature requests on GitHub. 
+This is an experimental plugin. Please report any issues or feature requests on GitHub.
