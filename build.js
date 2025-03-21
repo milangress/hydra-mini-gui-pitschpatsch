@@ -29,12 +29,16 @@ async function runBuild() {
                 __PKG_VERSION__: JSON.stringify(pkg.version),
                 __PKG_NAME__: JSON.stringify(pkg.name)
             },
-            banner
+            banner,
+            footer: "//# sourceMappingURL=http://localhost:3000/hydra-pitschpatsch.js.map",
         });
 
         if (!result.success) {
             console.error("Build failed:", result.logs);
             process.exit(1);
+        }
+        for (const output of result.outputs) {
+            console.log(output.path);
         }
 
         // Copy the demo HTML file to dist

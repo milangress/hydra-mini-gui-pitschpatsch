@@ -21,7 +21,7 @@
     "dev:special": "TEST_MODE=special bun run start",
     "start": "bun run build && bun run server.js",
     "build": "bun run build.js",
-    "build:watch": "bun build ./src/index.js --outfile=dist/hydra-pitschpatsch.js --watch",
+    "build:watch": "bun run build.js --watch src/**",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",

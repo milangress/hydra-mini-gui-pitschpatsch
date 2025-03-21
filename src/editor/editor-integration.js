@@ -128,9 +128,6 @@ export const hookIntoHydraEditor = function() {
                         const rangeCode = cm.getRange(range.start, range.end);
                         actions.updateCode(rangeCode, range);
 
-                        // Update GUI before evaluation
-                        this.updateGUI();
-
                         Logger.log('lastEvalRange', range);
 
                         // Let Hydra's handler do its thing

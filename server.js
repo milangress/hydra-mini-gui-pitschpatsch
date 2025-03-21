@@ -84,6 +84,15 @@ const server = Bun.serve({
                 }
             });
         }
+        if (url.pathname === '/hydra-pitschpatsch.js.map') {
+            return new Response(Bun.file('./dist/hydra-pitschpatsch.js.map'), {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'no-cache'
+                }
+            });
+        }
 
         // 404 for everything else
         return new Response('Not Found', { status: 404 });

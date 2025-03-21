@@ -21,7 +21,7 @@ export class HydraMiniGUI {
         this._updateTimeout = null;
         this.guiManager = new GUIManager(this.hydra);
         this.codeManager = new CodeValueManager(this.hydra);
-        this.guiManager.setupGUI();
+        this.guiManager._updateGUI();
         
         hookIntoEval.call(this);
         hookIntoHydraEditor.call(this);

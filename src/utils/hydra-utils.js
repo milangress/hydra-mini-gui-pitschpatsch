@@ -1,6 +1,6 @@
 // Utility functions for Hydra integration
 import { Logger } from "./logger.js";
-
+import { guiReady } from "../state/signals.js";
 // Get Hydra instance
 export const getHydra = () => {
     Logger.log('getting hydra');
@@ -37,6 +37,7 @@ export const waitForGUI = () => {
         const check = () => {
             if (window.lil?.GUI) {
                 resolve();
+                guiReady.value = true;
             } else {
                 setTimeout(check, 100);
             }

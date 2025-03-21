@@ -6,7 +6,7 @@ import { Logger } from '../utils/logger.js';
 import { removeLoadScriptLines } from '../utils/code-utils.js';
 import { effect } from '@preact/signals-core';
 import { parameters, valuePositions } from '../state/signals.js';
-import { actions } from '../state/actions.js';
+import { actions } from '../state/signals.js';
 
 /**
  * Manages the finding and updating of numeric values in Hydra code, handling both static values

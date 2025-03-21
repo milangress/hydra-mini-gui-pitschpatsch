@@ -3,8 +3,8 @@ import { TweakpaneAdapter } from '../adapters/tweakpane-adapter.js';
 import { ParameterManager } from './parameter-manager.js';
 import { SettingsPage } from './settings-page.js';
 import { Logger } from '../../utils/logger.js';
+import { effect } from '@preact/signals-core';
 import { layout, actions, currentCode, valuePositions } from '../../state/signals.js';
-import { effect } from 'effector';
 
 /**
  * New GUIManager that separates concerns and is more testable
@@ -15,7 +15,7 @@ export class GUIManager {
         this.domAdapter = new DOMAdapter();
         this.tweakpaneAdapter = new TweakpaneAdapter();
         this.parameterManager = new ParameterManager(this.tweakpaneAdapter);
-        this.settingsPage = new SettingsPage(this.tweakpaneAdapter);
+        this.settingsPage = null;
         
         // Tweakpane instance
         this.tabs = null;
@@ -46,6 +46,9 @@ export class GUIManager {
             title: 'Hydra Controls',
             container
         });
+
+        // Initialize settings page after Tweakpane is created
+        this.settingsPage = new SettingsPage(this.hydra, this.tweakpaneAdapter);
 
         this._setupTabs();
         this._addPlaceholder();
@@ -105,6 +108,7 @@ export class GUIManager {
 
         try {
             // Update parameters
+            console.log('parameterManager.updateParameters', this.parametersTab, code, positions);
             this.parameterManager.updateParameters(
                 this.parametersTab, 
                 code, 
@@ -131,11 +135,14 @@ export class GUIManager {
      */
     cleanup() {
         this.tweakpaneAdapter.cleanup();
-        this.settingsPage.cleanup();
+        if (this.settingsPage) {
+            this.settingsPage.cleanup();
+        }
         this.parameterManager.cleanup();
         this.domAdapter.cleanup();
         
         this.tabs = null;
         this.parametersTab = null;
+        this.settingsPage = null;
     }
 } 

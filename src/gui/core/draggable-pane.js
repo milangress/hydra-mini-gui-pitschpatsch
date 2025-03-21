@@ -17,7 +17,7 @@ export class DraggablePane {
         this.onDragEnd = this.onDragEnd.bind(this);
         
         // Wait a bit for Tweakpane to be initialized
-        setTimeout(() => this.init(), 100);
+        setTimeout(() => this.init(), 1000);
     }
 
     /**
