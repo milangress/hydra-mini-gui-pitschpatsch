@@ -189,4 +189,60 @@ b().out()
 hue(() => Math.sin(time)).out()
 hue(0.5).out()
 hue().out()
+
+b = 0
+update = () => b += 0.01 * Math.sin(time)
+shape().scrollX(()=>b).out(o0)
+
+setResolution(100,100)
+osc().out(o0)
+
+speed = 3
+osc(60,0.1,[0,1.5]).out(o0)
+
+shape(99).scrollX(() => -mouse.x / width).out(o0)
+
+shape(2,0.8).kaleid(()=>6+Math.sin(time)*4).out(o0)
+
+shape(99).scroll(
+  () => -mouse.x / width,
+  () => -mouse.y / height)
+  .out(o0)
+
+  //array
+
+  osc([10,30,60].fast(2),0.1,1.5).out(o0)
+
+  shape(999).scrollX([-0.2,0.2].smooth()).out(o0)
+
+  shape(4).rotate([-3.14,3.14].ease('easeInOutCubic')).out(o0)
+
+  shape(999).scrollY(.2).scrollX([-0.2,0.2])
+  .add(
+  shape(4).scrollY(-.2).scrollX([-0.2,0.2].offset(0.5))
+  ).out(o0)
+
+  shape().scrollX([0,1,2,3,4].fit(-0.2,0.2)).out(o0)
+
+  shape().scrollX([0,1,2,3,4].fit(-0.2,0.2)).out(o0)
+
+  //sources
+
+  s0.initVideo("https://media.giphy.com/media/AS9LIFttYzkc0/giphy.mp4")
+src(s0).modulate(noise(3)).out(o0)
+
+s0.initImage("https://upload.wikimedia.org/wikipedia/commons/2/25/Hydra-Foto.jpg")
+osc(6).modulate(src(s0),1).out(o0)
+
+//various
+
+shape().scale(0.5).add(shape(4),[0,0.25,0.5,0.75,1]).out(o0)
+
+solid(1,0,0,1).layer(shape(4).color(0,1,0,()=>Math.sin(time*2))).out(o0)
+
+gradient(5).mask(voronoi(),3,0.5).invert([0,1]).out(o0)
+
+osc(60,0.1,1.5).layer(gradient().r()).out(o0)
+
+solid([1,0,0],[0,1,0],[0,0,1],1).out(o0)
 `;
