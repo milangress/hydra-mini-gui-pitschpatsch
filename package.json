@@ -1,6 +1,6 @@
 {
   "name": "hydra-pitschpatsch",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Creates a mini gui for hydra-synth",
   "tags": [
     "hydra",
@@ -28,7 +28,7 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
     "playwright:install": "playwright install chromium",
-    "publish": "bun run build && bun publish --access public"
+    "pub": "bun run build && bun publish --access public"
   },
   "keywords": [
     "hydra",
