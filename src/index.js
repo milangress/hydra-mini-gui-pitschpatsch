@@ -1,4 +1,4 @@
-import { HydraMiniGUI } from './hydra-mini-gui.js';
+import { HydraMiniGUI } from './hydra-pitschpatsch.js';
 import { loadDependencies } from './utils/dependencies.js';
 
 // Wrap everything in a self-executing block
