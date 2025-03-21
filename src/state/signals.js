@@ -6,8 +6,8 @@ import { Logger } from '../utils/logger.js';
  */
 
 // Editor state
-export const currentCode = signal('');
-export const currentEvalCode = signal('');
+export const currentCode = signal(null);
+export const currentEvalCode = signal(null);
 export const currentEvalRange = signal(null);
 export const currentParameters = signal([]);
 
@@ -38,6 +38,18 @@ export const parameters = computed(() => {
     return params;
 });
 
+export const placeholderMessage = computed(() => {
+    console.log('placeholderMessage computed', currentCode.value, currentParameters.value);
+
+    if (!currentCode.value) {
+        return 'Waiting for code...';
+    }
+    if (!currentParameters.value || currentParameters.value.length === 0) {
+        return 'No controls available';
+    }
+    return null;
+});
+
 effect(() => {
     Logger.log('currentEvalRange Signal updated', currentEvalRange.value);
 });
@@ -52,6 +64,9 @@ effect(() => {
 });
 effect(() => {
     Logger.log('settings Signal updated', settings.value);
+});
+effect(() => {
+    Logger.log('errors Signal updated', errors.value);
 });
 
 function updateParameterValue(identifier, value, type = 'key') {
@@ -82,11 +97,6 @@ function updateParameterValue(identifier, value, type = 'key') {
  * Action creators - these replace the old dispatch actions
  */
 export const actions = {
-    evalResult: ({result, code, range}) => {
-        currentEvalResult.value = result;
-        currentEvalCode.value = code;
-        currentEvalRange.value = range;
-    },
     currentParameters: (parameters) => {
         console.log('actions.currentParameters', parameters);
         currentParameters.value = parameters;

@@ -13,7 +13,9 @@ export class PointControl extends BaseControl {
      */
     constructor(config) {
         super(config);
-        this.mapping = this._determineMapping(config.defaultValue);
+        this.params = config.params;
+        // Use first param's value for mapping
+        this.mapping = this._determineMapping(this.params[0].value);
     }
 
     /**
@@ -79,7 +81,7 @@ export class PointControl extends BaseControl {
      * @returns {import('../types/controls.js').ControlBinding[]}
      */
     createBinding(folder, tweakpaneAdapter) {
-        const displayValue = this.mapping.toDisplay(this.value);
+        const displayValue = this.mapping.toDisplay(this.params[0].value);
         const obj = { point: { x: displayValue, y: displayValue } };
         
         const controller = tweakpaneAdapter.createBinding(folder, obj, 'point', {
@@ -88,13 +90,19 @@ export class PointControl extends BaseControl {
             label: this.options.label
         });
 
+        // Store parameter objects by their component
+        const paramsByComponent = {
+            x: this.params.find(p => p.paramName.toLowerCase().endsWith('x')),
+            y: this.params.find(p => p.paramName.toLowerCase().endsWith('y'))
+        };
+
         controller.on('change', event => {
             const { x, y } = event.value;
             const hydraX = this.mapping.fromDisplay(x);
             const hydraY = this.mapping.fromDisplay(y);
-            if (this.parameter) {
-                actions.updateParameterValueByKey(this.parameter.key, { x: hydraX, y: hydraY });
-            }
+            // Update each component using its parameter's key
+            if (paramsByComponent.x) actions.updateParameterValueByKey(paramsByComponent.x.key, hydraX);
+            if (paramsByComponent.y) actions.updateParameterValueByKey(paramsByComponent.y.key, hydraY);
         });
 
         if (controller.element) {
@@ -109,22 +117,22 @@ export class PointControl extends BaseControl {
             {
                 binding: obj,
                 controller,
-                originalValue: this.defaultValue,
+                originalValue: this.params[0].value,
                 isPoint: true,
                 pointKey: 'point',
                 pointComponent: 'x',
                 mapPoint: this.mapping.mode === 'centered',
-                parameter: this.parameter
+                parameter: paramsByComponent.x
             },
             {
                 binding: obj,
                 controller,
-                originalValue: this.defaultValue,
+                originalValue: this.params[0].value,
                 isPoint: true,
                 pointKey: 'point',
                 pointComponent: 'y',
                 mapPoint: this.mapping.mode === 'centered',
-                parameter: this.parameter
+                parameter: paramsByComponent.y
             }
         ];
     }

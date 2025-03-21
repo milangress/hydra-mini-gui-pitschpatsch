@@ -126,7 +126,8 @@ export const hookIntoHydraEditor = function() {
 
                         // Store the range and get its code
                         const rangeCode = cm.getRange(range.start, range.end);
-                        actions.updateCode(rangeCode, range);
+                        actions.updateCode(rangeCode);
+                        actions.updateEvalRange(range);
 
                         Logger.log('lastEvalRange', range);
 

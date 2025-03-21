@@ -4,7 +4,7 @@ import { ParameterManager } from './parameter-manager.js';
 import { SettingsPage } from './settings-page.js';
 import { Logger } from '../../utils/logger.js';
 import { effect } from '@preact/signals-core';
-import { layout, actions, currentCode, currentParameters } from '../../state/signals.js';
+import { layout, actions, currentCode, currentParameters, placeholderMessage } from '../../state/signals.js';
 
 /**
  * New GUIManager that separates concerns and is more testable
@@ -28,6 +28,17 @@ export class GUIManager {
             if (positions.length > 0 && code) {
                 console.log('gui-manager effect', positions, code);
                 this._updateGUI(positions, code);
+            }
+        });
+
+        // Add effect for placeholder message
+        effect(() => {
+            const message = placeholderMessage.value;
+            console.log('gui-manager effect placeholder message', message);
+            if (message && this.parametersTab) {
+                console.log('gui-manager effect placeholder message', message);
+                this.tweakpaneAdapter.clearFolder(this.parametersTab);
+                this.tweakpaneAdapter.createMessageBinding(this.parametersTab, message);
             }
         });
     }
@@ -54,7 +65,6 @@ export class GUIManager {
         this.settingsPage = new SettingsPage(this.hydra, this.tweakpaneAdapter);
 
         this._setupTabs();
-        this._addPlaceholder();
 
         return this.tweakpaneAdapter.pane;
     }
@@ -82,17 +92,9 @@ export class GUIManager {
         this.settingsPage.setDefaultCallback((index, defaultValue) => {
             if (defaultValue !== undefined) {
                 this.parameterManager.revertValue(index, defaultValue);
-                actions.updateParameter(`value${index}`, defaultValue);
+                actions.updateParameterValueByIndex(index, defaultValue);
             }
         });
-    }
-
-    /**
-     * Adds placeholder text
-     */
-    _addPlaceholder(message = 'Waiting for code...') {
-        if (!this.parametersTab) return;
-        this.tweakpaneAdapter.createMessageBinding(this.parametersTab, message);
     }
 
     /**
@@ -100,7 +102,7 @@ export class GUIManager {
      * @private
      */
     _updateGUI(positions, code) {
-        Logger.log('updating gui', !this.tweakpaneAdapter.pane, 'current code:', code);
+        Logger.log('updating gui', !this.tweakpaneAdapter.pane, 'current code:', code, 'positions:', positions);
         if (!this.tweakpaneAdapter.pane) {
             this.setupGUI();
         }
@@ -112,24 +114,22 @@ export class GUIManager {
         try {
             // Update parameters
             console.log('parameterManager.updateParameters', this.parametersTab, code, positions);
+            if (code && positions && positions.length > 0) {
             this.parameterManager.updateParameters(
                 this.parametersTab, 
                 code, 
                 positions
             );
+            this.settingsPage.updateDefaults(positions);
+        }
 
             // Update settings
-            this.settingsPage.updateCode(code);
-            this.settingsPage.updateDefaults(positions);
+            
             actions.clearErrors();
-
-            if (positions.length === 0) {
-                this._addPlaceholder('No controls available');
-            }
         } catch (error) {
+            console.error('gui-manager updateGUI error', error);
             actions.setError(error.message);
             this.settingsPage.showError(error.message);
-            this._addPlaceholder('No controls available');
         }
     }
 

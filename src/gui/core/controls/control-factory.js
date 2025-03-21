@@ -31,9 +31,6 @@ export class ControlFactory {
 
         groups.forEach(group => {
             const bindings = this.createControlForGroup(group, folder, tweakpaneAdapter);
-            for (const [key, binding] of bindings) {
-                controls.set(key, binding);
-            }
         });
 
         return controls;
@@ -44,21 +41,24 @@ export class ControlFactory {
      * @private
      */
     static createControlForGroup(group, folder, tweakpaneAdapter) {
-        const bindings = new Map();
-        const param = group.params[0];
-        
         Logger.log('ControlFactory createControlForGroup - group:', group);
-        Logger.log('ControlFactory createControlForGroup - param:', param);
         
         const config = {
-            name: param.paramName,
-            value: param.value,
-            defaultValue: param.paramDefault,
-            parameter: param,
+            name: group.params.map(p => p.paramName).join(''),
             options: {
-                label: group.metadata.label ?? param.paramName
+                label: group.metadata.label ?? group.params[0].paramName
             }
         };
+
+        // For color and point controls, pass all params
+        if (group.type === 'color' || group.type === 'point') {
+            config.params = group.params;
+        } else {
+            // For number controls, just pass the single param
+            config.value = group.params[0].value;
+            config.defaultValue = group.params[0].paramDefault;
+            config.parameter = group.params[0];
+        }
 
         let control;
         switch (group.type) {
@@ -73,26 +73,7 @@ export class ControlFactory {
         }
 
         const controlBindings = control.createBinding(folder, tweakpaneAdapter);
-        Logger.log('ControlFactory createControlForGroup - controlBindings:', controlBindings);
-        
-        if (Array.isArray(controlBindings)) {
-            controlBindings.forEach((binding, i) => {
-                const param = group.params[i];
-                Logger.log(`ControlFactory binding array [${i}] - param:`, param);
-                if (param?.key) {
-                    binding.parameter = param;
-                    Logger.log(`ControlFactory binding array [${i}] - parameter:`, binding.parameter);
-                    bindings.set(param.key, binding);
-                }
-            });
-        } else {
-            controlBindings.parameter = param;
-            Logger.log('ControlFactory single binding - parameter:', controlBindings.parameter);
-            Logger.log('ControlFactory single binding - setting key:', param.key);
-            bindings.set(param.key, controlBindings);
-        }
-
-        return bindings;
+        return controlBindings;
     }
 
     /**

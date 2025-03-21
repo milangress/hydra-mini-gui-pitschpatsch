@@ -12,10 +12,11 @@ export class ColorControl extends BaseControl {
      */
     constructor(config) {
         super(config);
+        this.params = config.params;
         this.originalValues = {
-            r: this.value,
-            g: this.value,
-            b: this.value
+            r: this.params.find(p => p.paramName === 'r')?.value ?? 0,
+            g: this.params.find(p => p.paramName === 'g')?.value ?? 0,
+            b: this.params.find(p => p.paramName === 'b')?.value ?? 0
         };
     }
 
@@ -53,11 +54,19 @@ export class ColorControl extends BaseControl {
             color: { type: this.options.type }
         });
 
+        // Store parameter objects by their component name
+        const paramsByComponent = {
+            r: this.params.find(p => p.paramName === 'r'),
+            g: this.params.find(p => p.paramName === 'g'),
+            b: this.params.find(p => p.paramName === 'b')
+        };
+
         controller.on('change', event => {
             const { r, g, b } = event.value;
-            if (this.parameter) {
-                actions.updateParameterValueByKey(this.parameter.key, { r, g, b });
-            }
+            // Update each component using its parameter's key
+            if (paramsByComponent.r) actions.updateParameterValueByKey(paramsByComponent.r.key, r);
+            if (paramsByComponent.g) actions.updateParameterValueByKey(paramsByComponent.g.key, g);
+            if (paramsByComponent.b) actions.updateParameterValueByKey(paramsByComponent.b.key, b);
         });
 
         if (controller.element) {
@@ -68,13 +77,13 @@ export class ColorControl extends BaseControl {
             }
         }
 
-        return ['r', 'g', 'b'].map((component) => ({
+        return ['r', 'g', 'b'].map(component => ({
             binding: obj,
             controller,
             originalValue: this.originalValues[component],
             isColor: true,
             colorComponent: component,
-            parameter: this.parameter
+            parameter: paramsByComponent[component]
         }));
     }
 

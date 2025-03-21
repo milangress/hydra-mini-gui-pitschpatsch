@@ -18,7 +18,7 @@ export class ParameterManager {
     updateParameters(folder, currentCode, valuePositions) {
         this.controls.clear();
 
-        if (valuePositions.length === 0) {
+        if (valuePositions && valuePositions.length === 0) {
             // Check for syntax errors if we have code but no values
             if (currentCode) {
                 try {
