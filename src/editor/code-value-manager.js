@@ -32,22 +32,19 @@ export class CodeValueManager {
         // Watch for parameter changes and update code accordingly
         effect(() => {
             const params = parameters.value;
-            if (!params.size || this.isUpdating) return;
+            if (params.length === 0) return;
             Logger.log('CodeValueManager effect', { params });
 
-            for (const [key, value] of params) {
-                const index = parseInt(key.replace('value', ''));
-                Logger.log('CodeValueManager effect - key:', key, 'value:', value, 'index:', index);
-                if (!isNaN(index)) {
-                    Logger.log('CodeValueManager effect - updating value:', { index, value });
-                    this.updateValue(
-                        index,
-                        value,
-                        currentEvalRange.value
-                    );
-                }
+            for (const param of params) {
+                Logger.log('CodeValueManager effect - updating value:', param);
+                this.updateValue(
+                    param.index,
+                    param.value,
+                    param,
+                    currentEvalRange.value,
+                );
             }
-        })
+        });
 
     effect(() => {
         const newCurrentCode = currentCode.value;
@@ -138,7 +135,7 @@ export class CodeValueManager {
 
         if (index >= valuePositions.length) return;
 
-        const pos = valuePositions[index];
+        const pos = valuePositions;
         const cm = window.cm;
 
         Logger.log('Number position info:', pos);
