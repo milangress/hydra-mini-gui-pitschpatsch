@@ -1,16 +1,16 @@
 {
-  "name": "hydra-mini-gui",
+  "name": "hydra-pitschpatsch",
   "version": "1.0.0",
-  "description": "create a mini gui for hydra-synth",
+  "description": "Creates a mini gui for hydra-synth",
   "license": "ISC",
   "author": "Milan Gress",
   "type": "module",
-  "main": "dist/hydra-mini-gui.js",
+  "main": "dist/hydra-pitschpatsch.js",
   "scripts": {
     "dev": "bun run build:watch & bun run --watch server.js",
     "start": "bun run build && bun run server.js",
-    "build": "bun build ./src/index.js --outfile=dist/hydra-mini-gui.js",
-    "build:watch": "bun build ./src/index.js --outfile=dist/hydra-mini-gui.js --watch",
+    "build": "bun build ./src/index.js --outfile=dist/hydra-pitschpatsch.js --outdir ./dist --sourcemap=linked",
+    "build:watch": "bun build ./src/index.js --outfile=dist/hydra-pitschpatsch.js --watch",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",
@@ -29,7 +29,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/hydra-mini-gui"
+    "url": "https://github.com/milangress/hydra-pitschpatsch"
   },
   "dependencies": {
     "acorn": "^8.11.3",
