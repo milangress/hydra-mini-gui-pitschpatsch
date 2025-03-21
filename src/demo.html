@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydra Mini GUI Demo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .hydra-container {
+            width: 100%;
+            margin: 20px 0;
+            aspect-ratio: 16/9;
+            position: relative;
+        }
+        #hydra-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #000;
+        }
+        .controls {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Hydra Mini GUI Demo</h1>
+        <div class="hydra-container">
+            <iframe id="hydra-iframe" title="Hydra Editor"></iframe>
+        </div>
+        <div class="controls" id="gui-container">
+            <!-- The GUI will be mounted here -->
+        </div>
+    </div>
+
+    <script>
+        // Get the current host for the loadScript URL
+        const currentHost = window.location.origin;
+        const libraryUrl = `${currentHost}/hydra-pitschpatsch.js`;
+        
+        // Basic Hydra code with controls
+        const code = `
+            // Load the mini GUI library from the current host
+            await loadScript("${libraryUrl}")
+
+            // use Alt+Enter to run this block and see th Ui
+            osc(40, 0.1, 0.8)
+                .color(1, 0.5, 0.4)
+                .rotate(0.5)
+                .out()
+
+        `;
+
+        // Encode the code for the iframe URL
+        const encodedCode = btoa(code);
+        const hydraUrl = `https://hydra.ojack.xyz/?code=${encodedCode}`;
+        
+        // Set the iframe source
+        document.getElementById('hydra-iframe').src = hydraUrl;
+    </script>
+</body>
+</html> 

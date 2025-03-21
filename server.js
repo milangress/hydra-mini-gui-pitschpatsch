@@ -49,20 +49,38 @@ if (!build.success) {
 const server = Bun.serve({
     port: 3000,
     fetch(req) {
-        // Serve the bundled file
-        return new Response(Bun.file('./dist/hydra-pitschpatsch.js'), {
-            headers: {
-                'Content-Type': 'application/javascript',
-                'Access-Control-Allow-Origin': '*',
-                'Cache-Control': 'no-cache'
-            }
-        });
+        const url = new URL(req.url);
+        
+        // Serve demo.html at the root
+        if (url.pathname === '/' || url.pathname === '/index.html') {
+            return new Response(Bun.file('./dist/demo.html'), {
+                headers: {
+                    'Content-Type': 'text/html',
+                    'Cache-Control': 'no-cache'
+                }
+            });
+        }
+        
+        // Serve the bundled JS file
+        if (url.pathname === '/hydra-pitschpatsch.js') {
+            return new Response(Bun.file('./dist/hydra-pitschpatsch.js'), {
+                headers: {
+                    'Content-Type': 'application/javascript',
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'no-cache'
+                }
+            });
+        }
+
+        // 404 for everything else
+        return new Response('Not Found', { status: 404 });
     },
 });
 
 console.log(`
-Server running at http://localhost:${server.port}
 
 Copy this URL to test in Hydra:
 ${hydraUrl}
+
+Demo page: http://localhost:${server.port}
 `); 

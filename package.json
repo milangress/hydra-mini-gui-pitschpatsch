@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "bun run build:watch & bun run --watch server.js",
     "start": "bun run build && bun run server.js",
-    "build": "bun build ./src/index.js --outfile=dist/hydra-pitschpatsch.js --outdir ./dist --sourcemap=linked",
+    "build": "bun run build.js",
     "build:watch": "bun build ./src/index.js --outfile=dist/hydra-pitschpatsch.js --watch",
     "test": "bun test",
     "test:watch": "bun test --watch",

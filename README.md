@@ -2,6 +2,8 @@
 
 A plugin for Hydra that automatically creates a GUI interface for controlling numeric values in your code.
 
+
+
 ## Loading
 
 Run this line inside the Hydra editor to load the extension:
