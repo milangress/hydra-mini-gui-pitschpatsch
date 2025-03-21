@@ -1,77 +1,98 @@
 // Comprehensive test cases for all Hydra functions
-export const code = `
+export const allFuncCode = `
 // Color operations
-osc(60,0.1,0).brightness(0.4).out(o0)
-osc(60,0.1,0).contrast(1.6).out(o1)
-osc(60,0.1,0).color(1,1,1,1).out(o2)
-osc(60,0.1,0).colorama(0.005).out(o3)
-render(o0)
+osc().brightness(0.4).out()
 
-osc(60,0.1,0).invert(1).out(o0)
-osc(60,0.1,0).luma(0.5,0.1).out(o1)
-osc(60,0.1,0).posterize(3,0.6).out(o2)
-osc(60,0.1,0).saturate(2).out(o3)
-render(o1)
+osc().contrast(1.6).out()
 
-osc(60,0.1,0).shift(0.5,0,0,0).out(o0)
-osc(60,0.1,0).thresh(0.5,0.04).out(o1)
+osc().color(1,1,1,1).out()
+
+osc().colorama(0.005).out()
+
+osc().invert(1).out()
+
+osc().luma(0.5,0.1).out()
+
+osc().posterize(3,0.6).out()
+
+osc().saturate(2).out()
+
+osc().shift(0.5,0,0,0).out()
+
+osc().thresh(0.5,0.04).out()
 
 // Geometry operations
-osc(60,0.1,0).kaleid(4).out(o0)
-osc(60,0.1,0).pixelate(20,20).out(o1)
-osc(60,0.1,0).repeat(3,3,0,0).out(o2)
-osc(60,0.1,0).repeatX(3,0).out(o3)
-render(o2)
+osc().kaleid(4).out()
 
-osc(60,0.1,0).repeatY(3,0).out(o0)
-osc(60,0.1,0).rotate(10,0).out(o1)
-osc(60,0.1,0).scale(1.5,1,1,0.5,0.5).out(o2)
-osc(60,0.1,0).scrollX(0.5,0).out(o3)
-render(o3)
+osc().pixelate(20,20).out()
 
-osc(60,0.1,0).scrollY(0.5,0).out(o0)
+osc().repeat(3,3,0,0).out()
+
+osc().repeatX(3,0).out()
+
+osc().repeatY(3,0).out()
+
+osc().rotate(10,0).out()
+
+osc().scale(1.5,1,1,0.5,0.5).out()
+
+osc().scrollX(0.5,0).out()
+
+osc().scrollY(0.5,0).out()
 
 // Modulation
-noise(10,0.1).modulate(osc(60,0.1,0),0.1).out(o0)
-osc(60,0.1,0).modulateHue(osc(60,0.1,0),1).out(o1)
-osc(60,0.1,0).modulateKaleid(osc(60,0.1,0),4).out(o2)
-osc(60,0.1,0).modulatePixelate(osc(60,0.1,0),10,3).out(o3)
-render(o0)
+noise().modulate(osc(),0.1).out()
 
-osc(60,0.1,0).modulateRepeat(osc(60,0.1,0),3,3,0.5,0.5).out(o0)
-osc(60,0.1,0).modulateRepeatX(osc(60,0.1,0),3,0.5).out(o1)
-osc(60,0.1,0).modulateRepeatY(osc(60,0.1,0),3,0.5).out(o2)
-osc(60,0.1,0).modulateRotate(osc(60,0.1,0),1,0).out(o3)
-render(o1)
+osc().modulateHue(osc(),1).out()
 
-osc(60,0.1,0).modulateScale(osc(60,0.1,0),1,1).out(o0)
-osc(60,0.1,0).modulateScrollX(osc(60,0.1,0),0.5,0).out(o1)
-osc(60,0.1,0).modulateScrollY(osc(60,0.1,0),0.5,0).out(o2)
+osc().modulateKaleid(osc(),4).out()
+
+osc().modulatePixelate(osc(),10,3).out()
+
+osc().modulateRepeat(osc(),3,3,0.5,0.5).out()
+
+osc().modulateRepeatX(osc(),3,0.5).out()
+
+osc().modulateRepeatY(osc(),3,0.5).out()
+
+osc().modulateRotate(osc(),1,0).out()
+
+osc().modulateScale(osc(),1,1).out()
+
+osc().modulateScrollX(osc(),0.5,0).out()
+
+osc().modulateScrollY(osc(),0.5,0).out()
 
 // Blend operations
-osc(60,0.1,0).add(osc(60,0.1,0),1).out(o0)
-osc(60,0.1,0).blend(osc(60,0.1,0),0.5).out(o1)
-osc(60,0.1,0).diff(osc(60,0.1,0)).out(o2)
-osc(60,0.1,0).layer(osc(60,0.1,0)).out(o3)
-render(o2)
+osc().add(osc(),1).out()
 
-osc(60,0.1,0).mask(osc(60,0.1,0)).out(o0)
-osc(60,0.1,0).mult(osc(60,0.1,0),1).out(o1)
+osc().blend(osc(),0.5).out()
+
+osc().diff(osc()).out()
+
+osc().layer(osc()).out()
+
+osc().mask(osc()).out()
+
+osc().mult(osc(),1).out()
 
 // Source generators
-noise(10,0.1).out(o0)
-osc(60,0.1,0).out(o1)
-shape(3,0.3,0.01).out(o2)
-gradient(0).out(o3)
-render(o3)
+noise(10,0.1).out()
 
-solid(0,0,0,1).out(o0)
-voronoi(5,0.3,0.3).out(o1)
+osc(60,0.1,0).out()
+
+shape(3,0.3,0.01).out()
+
+gradient(0).out()
+
+solid(0,0,0,1).out()
+
+voronoi(5,0.3,0.3).out()
 
 // Channel operations
-osc(60,0.1,0).r().out(o0)
-osc(60,0.1,0).g().out(o1)
-osc(60,0.1,0).b().out(o2)
+osc().r().out()
+osc().g().out()
+osc().b().out()
 `
 
 // Special cases and complex examples
