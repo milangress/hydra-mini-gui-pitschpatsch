@@ -1,3 +1,6 @@
+import { Logger } from '../../../utils/logger.js';
+import { actions } from '../../../state/signals.js';
+
 /**
  * Base class for all controls
  */
@@ -10,22 +13,8 @@ export class BaseControl {
         this.name = config.name;
         this.value = config.value;
         this.defaultValue = config.defaultValue;
-        this.onChange = config.onChange;
         this.parameter = config.parameter;
         this.options = this._processOptions(config.options || {});
-    }
-
-    /**
-     * Process control options
-     * @protected
-     * @param {import('../types/controls.js').BaseControlOptions} options 
-     * @returns {import('../types/controls.js').BaseControlOptions}
-     */
-    _processOptions(options) {
-        return {
-            label: options.label ?? this.parameter?.paramName ?? this.name,
-            readonly: options.readonly ?? false
-        };
     }
 
     /**
@@ -40,7 +29,10 @@ export class BaseControl {
 
         controller.on('change', event => {
             this.value = event.value;
-            this.onChange?.(this.parameter?.index || this.name, this.value);
+            actions.updateParameter(
+                this.parameter?.index !== undefined ? `value${this.parameter.index}` : this.name,
+                this.value
+            );
         });
 
         if (controller.element) {
@@ -56,6 +48,17 @@ export class BaseControl {
             controller,
             originalValue: this.defaultValue,
             parameter: this.parameter
+        };
+    }
+
+    /**
+     * Process control options
+     * @protected
+     */
+    _processOptions(options) {
+        return {
+            label: options.label || this.name,
+            ...options
         };
     }
 

@@ -6,6 +6,7 @@ import { hookIntoEval, hookIntoHydraEditor } from './editor/editor-integration.j
 import { GUIManager } from './gui/core/gui-manager.js';
 import { CodeValueManager } from './editor/code-value-manager.js';
 import { Logger } from './utils/logger.js';
+import { actions, currentCode, currentEvalCode, lastEvalRange, valuePositions } from './state/signals.js';
 
 export class HydraMiniGUI {
     constructor() {
@@ -16,10 +17,6 @@ export class HydraMiniGUI {
         }
 
         this.hydra = getHydra();
-        this.currentCode = "";
-        this.currentEvalCode = ""; // Store the current state for evaluation
-        this.valuePositions = [];
-        this.lastEvalRange = null; // Track the last evaluated code range
         this.isUpdating = false;
         this._updateTimeout = null;
         this.guiManager = new GUIManager(this.hydra);
@@ -33,21 +30,10 @@ export class HydraMiniGUI {
         window._hydraGui = this;
     }
 
-    updateGUI() {
-        try {
-            this.valuePositions = this.codeManager.findValues(this.currentCode);
-            Logger.log('updateGUI', { currentCode: this.currentCode, valuePositions: this.valuePositions });
-
-            this.guiManager.updateGUI(this.currentCode, this.valuePositions, this.updateValue.bind(this));
-        } catch (error) {
-            Logger.error('Error updating GUI:', error);
-        }
-    }
-
     updateValue(index, newValue) {
         Logger.log('updateValue', { index, newValue });
         if (isNaN(index)) {
-            Logger.error('Invalid index:', index    );
+            Logger.error('Invalid index:', index);
             return;
         }
         try {
@@ -55,17 +41,27 @@ export class HydraMiniGUI {
             this.codeManager.updateValue(
                 index,
                 newValue,
-                this.valuePositions,
-                this.lastEvalRange
+                valuePositions.value,
+                lastEvalRange.value
             );
 
             // Update our current code to match the new state
-            if (window.cm && this.lastEvalRange) {
-                this.currentCode = window.cm.getRange(this.lastEvalRange.start, this.lastEvalRange.end);
+            if (window.cm && lastEvalRange.value) {
+                const code = window.cm.getRange(lastEvalRange.value.start, lastEvalRange.value.end);
+                actions.updateCode(code);
             }
         } catch (error) {
             Logger.error('Error updating value:', error);
         }
+    }
+
+    updateGUI() {
+        // Find values in current code
+        const positions = this.codeManager.findValues(currentCode.value);
+        actions.updateValuePositions(positions);
+        
+        // Update GUI with new values
+        this.guiManager.updateGUI();
     }
 
     evaluateCode() {

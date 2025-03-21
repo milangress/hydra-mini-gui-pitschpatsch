@@ -1,19 +1,15 @@
-import { createInitialState, reducer, actions } from './state.js';
 import { DOMAdapter } from '../adapters/dom-adapter.js';
 import { TweakpaneAdapter } from '../adapters/tweakpane-adapter.js';
 import { ParameterManager } from './parameter-manager.js';
 import { SettingsPage } from './settings-page.js';
 import { Logger } from '../../utils/logger.js';
+import { layout, parameters, settings, errors, actions, currentCode, valuePositions } from '../../state/signals.js';
 
 /**
  * New GUIManager that separates concerns and is more testable
  */
 export class GUIManager {
     constructor(hydra) {
-        // Core state management
-        this.state = createInitialState();
-        this.dispatch = this.dispatch.bind(this);
-        
         // Adapters and managers
         this.domAdapter = new DOMAdapter();
         this.tweakpaneAdapter = new TweakpaneAdapter();
@@ -26,15 +22,6 @@ export class GUIManager {
     }
 
     /**
-     * Updates state using pure reducer
-     */
-    dispatch(action) {
-        const nextState = reducer(this.state, action);
-        this.state = nextState;
-        return nextState;
-    }
-
-    /**
      * Sets up the GUI
      */
     setupGUI() {
@@ -43,7 +30,7 @@ export class GUIManager {
         this.cleanup();
         
         // Setup container using DOM adapter
-        const container = this.domAdapter.setupContainer(this.state.layout);
+        const container = this.domAdapter.setupContainer(layout.value);
         if (!container) return;
 
         // Create Tweakpane instance
@@ -76,12 +63,12 @@ export class GUIManager {
         this.settingsPage.setup(this.settingsTab);
         this.settingsPage.setResetCallback(() => {
             this.parameterManager.resetAllValues();
-            this.dispatch(actions.updateSettings({ isReset: true }));
+            actions.updateSettings({ isReset: true });
         });
         this.settingsPage.setDefaultCallback((index, defaultValue) => {
             if (defaultValue !== undefined) {
                 this.parameterManager.revertValue(index, defaultValue);
-                this.dispatch(actions.updateParameter(index, defaultValue));
+                actions.updateParameter(`value${index}`, defaultValue);
             }
         });
     }
@@ -97,8 +84,8 @@ export class GUIManager {
     /**
      * Updates the GUI with new code and values
      */
-    updateGUI(currentCode, valuePositions, onValueChange) {
-        Logger.log('updating gui', !this.tweakpaneAdapter.pane, 'current code:', currentCode);
+    updateGUI() {
+        Logger.log('updating gui', !this.tweakpaneAdapter.pane, 'current code:', currentCode.value);
         if (!this.tweakpaneAdapter.pane) {
             this.setupGUI();
         }
@@ -111,24 +98,20 @@ export class GUIManager {
             // Update parameters
             this.parameterManager.updateParameters(
                 this.parametersTab, 
-                currentCode, 
-                valuePositions,
-                (index, value) => {
-                    onValueChange(index, value);
-                    this.dispatch(actions.updateParameter(index, value));
-                }
+                currentCode.value, 
+                valuePositions.value
             );
 
             // Update settings
-            this.settingsPage.updateCode(currentCode);
-            this.settingsPage.updateDefaults(valuePositions);
-            this.dispatch(actions.clearError());
+            this.settingsPage.updateCode(currentCode.value);
+            this.settingsPage.updateDefaults(valuePositions.value);
+            actions.clearErrors();
 
-            if (valuePositions.length === 0) {
+            if (valuePositions.value.length === 0) {
                 this._addPlaceholder('No controls available');
             }
         } catch (error) {
-            this.dispatch(actions.setError(error.message));
+            actions.setError(error.message);
             this.settingsPage.showError(error.message);
             this._addPlaceholder('No controls available');
         }
@@ -139,7 +122,7 @@ export class GUIManager {
      */
     updateControlValue(controlName, newValue) {
         this.parameterManager.updateControlValue(controlName, newValue);
-        this.dispatch(actions.updateParameter(controlName, newValue));
+        actions.updateParameter(controlName, newValue);
     }
 
     /**
@@ -153,8 +136,5 @@ export class GUIManager {
         
         this.tabs = null;
         this.parametersTab = null;
-        
-        // Reset state
-        this.state = createInitialState();
     }
 } 

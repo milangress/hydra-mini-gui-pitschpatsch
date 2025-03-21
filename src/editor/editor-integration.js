@@ -1,5 +1,6 @@
 // Editor integration methods
 import { Logger } from '../utils/logger.js';
+import { actions } from '../state/signals.js';
 
 export const hookIntoEval = () => {
     Logger.log('hooking into eval');
@@ -121,15 +122,13 @@ export const hookIntoHydraEditor = function() {
                         }
 
                         // Store the range and get its code
-                        this.lastEvalRange = range;
                         const rangeCode = cm.getRange(range.start, range.end);
-                        this.currentCode = rangeCode;
-                        this.currentEvalCode = rangeCode;
+                        actions.updateCode(rangeCode, range);
 
                         // Update GUI before evaluation
                         this.updateGUI();
 
-                        Logger.log('lastEvalRange', this.lastEvalRange);
+                        Logger.log('lastEvalRange', range);
 
                         // Let Hydra's handler do its thing
                         originalHandler();

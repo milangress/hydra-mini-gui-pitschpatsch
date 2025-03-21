@@ -2,6 +2,7 @@ import { Parser } from 'acorn';
 import { ParameterUtils } from '../utils/parameter-utils.js';
 import { ControlFactory } from './controls/control-factory.js';
 import { Logger } from '../../utils/logger.js';
+import { actions } from '../../state/signals.js';
 
 /**
  * Manages parameter organization and control creation
@@ -15,7 +16,7 @@ export class ParameterManager {
     /**
      * Updates the GUI with new parameter values
      */
-    updateParameters(folder, currentCode, valuePositions, onValueChange) {
+    updateParameters(folder, currentCode, valuePositions) {
         this.controls.clear();
 
         if (valuePositions.length === 0) {
@@ -54,7 +55,12 @@ export class ParameterManager {
             group.params.sort((a, b) => a.paramCount - b.paramCount);
 
             // Create controls for this group
-            const groupControls = ControlFactory.createControls(groupFolder, group.params, onValueChange, this.tweakpaneAdapter);
+            const groupControls = ControlFactory.createControls(
+                groupFolder, 
+                group.params,
+                (index, value) => actions.updateParameter(`value${index}`, value),
+                this.tweakpaneAdapter
+            );
             
             Logger.log('Created controls:', groupControls);
             
