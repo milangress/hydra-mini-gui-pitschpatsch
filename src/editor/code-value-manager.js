@@ -5,7 +5,8 @@ import { CodeFormatter } from './code-formatter.js';
 import { Logger } from '../utils/logger.js';
 import { removeLoadScriptLines } from '../utils/code-utils.js';
 import { effect } from '@preact/signals-core';
-import { parameters, valuePositions, lastEvalRange } from '../state/signals.js';
+import { parameters, valuePositions } from '../state/signals.js';
+import { actions } from '../state/actions.js';
 
 /**
  * Manages the finding and updating of numeric values in Hydra code, handling both static values
@@ -39,7 +40,7 @@ export class CodeValueManager {
                 const index = parseInt(key.replace('value', ''));
                 Logger.log('CodeValueManager effect - key:', key, 'value:', value, 'index:', index);
                 if (!isNaN(index)) {
-                    Logger.log('CodeValueManager effect - updating value:', { index, value, valuePositions: valuePositions.value, lastEvalRange: lastEvalRange.value });
+                    Logger.log('CodeValueManager effect - updating value:', { index, value, valuePositions: valuePositions.value });
                     this.updateValue(
                         index,
                         value,
@@ -66,9 +67,13 @@ export class CodeValueManager {
                 ecmaVersion: 'latest'
             });
 
-            return this._astTraverser.findValues(ast, cleanCode);
+            const foundValues = this._astTraverser.findValues(ast, cleanCode);
+            // Update store directly with found values
+            actions.currentParameters(foundValues);
+            return foundValues;
         } catch (error) {
             Logger.error('Error finding values:', error);
+            actions.currentParameters([]);
             return [];
         }
     }

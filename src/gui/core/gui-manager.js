@@ -4,21 +4,29 @@ import { ParameterManager } from './parameter-manager.js';
 import { SettingsPage } from './settings-page.js';
 import { Logger } from '../../utils/logger.js';
 import { layout, actions, currentCode, valuePositions } from '../../state/signals.js';
+import { effect } from 'effector';
 
 /**
  * New GUIManager that separates concerns and is more testable
  */
 export class GUIManager {
     constructor(hydra) {
-        // Adapters and managers
+        this.hydra = hydra;
         this.domAdapter = new DOMAdapter();
         this.tweakpaneAdapter = new TweakpaneAdapter();
         this.parameterManager = new ParameterManager(this.tweakpaneAdapter);
-        this.settingsPage = new SettingsPage(hydra, this.tweakpaneAdapter);
+        this.settingsPage = new SettingsPage(this.tweakpaneAdapter);
         
         // Tweakpane instance
         this.tabs = null;
         this.parametersTab = null;
+
+        // Add effect to automatically update GUI when store changes
+        effect(() => {
+            const positions = valuePositions.value;
+            const code = currentCode.value;
+            this._updateGUI(positions, code);
+        });
     }
 
     /**
@@ -83,9 +91,10 @@ export class GUIManager {
 
     /**
      * Updates the GUI with new code and values
+     * @private
      */
-    updateGUI() {
-        Logger.log('updating gui', !this.tweakpaneAdapter.pane, 'current code:', currentCode.value);
+    _updateGUI(positions, code) {
+        Logger.log('updating gui', !this.tweakpaneAdapter.pane, 'current code:', code);
         if (!this.tweakpaneAdapter.pane) {
             this.setupGUI();
         }
@@ -98,16 +107,16 @@ export class GUIManager {
             // Update parameters
             this.parameterManager.updateParameters(
                 this.parametersTab, 
-                currentCode.value, 
-                valuePositions.value
+                code, 
+                positions
             );
 
             // Update settings
-            this.settingsPage.updateCode(currentCode.value);
-            this.settingsPage.updateDefaults(valuePositions.value);
+            this.settingsPage.updateCode(code);
+            this.settingsPage.updateDefaults(positions);
             actions.clearErrors();
 
-            if (valuePositions.value.length === 0) {
+            if (positions.length === 0) {
                 this._addPlaceholder('No controls available');
             }
         } catch (error) {
@@ -116,7 +125,6 @@ export class GUIManager {
             this._addPlaceholder('No controls available');
         }
     }
-
 
     /**
      * Cleans up resources

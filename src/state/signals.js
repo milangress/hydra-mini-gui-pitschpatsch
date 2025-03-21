@@ -1,4 +1,4 @@
-import { signal, computed, batch } from '@preact/signals-core';
+import { signal, computed } from '@preact/signals-core';
 import { Logger } from '../utils/logger.js';
 
 /**
@@ -8,7 +8,9 @@ import { Logger } from '../utils/logger.js';
 // Editor state
 export const currentCode = signal('');
 export const currentEvalCode = signal('');
-export const lastEvalRange = signal(null);
+export const currentEvalRange = signal(null);
+export const currentParameters = signal([]);
+
 export const valuePositions = signal([]);
 
 // GUI state
@@ -31,23 +33,21 @@ export const hasParameters = computed(() => valuePositions.value.length > 0);
  * Action creators - these replace the old dispatch actions
  */
 export const actions = {
+    evalResult: ({result, code, range, parameters}) => {
+        currentEvalResult.value = result;
+        currentEvalCode.value = code;
+        currentEvalRange.value = range;
+        currentParameters.value = parameters;
+    },
     updateCode: (code) => currentCode.value = code,
-    updateEvalCode: (code) => currentEvalCode.value = code,
-    updateEvalRange: (range) => lastEvalRange.value = range,
-    updateValuePositions: (positions) => valuePositions.value = positions,
     updateParameter: (key, value) => {
         Logger.log('actions.updateParameter', { key, value });
         const newParams = new Map(parameters.value);
         newParams.set(key, value);
         parameters.value = newParams;
     },
-    updateLastEvalRange: (range) => lastEvalRange.value = range,
+    updateEvalRange: (range) => currentEvalRange.value = range,
     updateSettings: (newSettings) => settings.value = { ...settings.value, ...newSettings },
     setError: (error) => errors.value = [error],
     clearErrors: () => errors.value = [],
-    updateLayout: (newLayout) => {
-        batch(() => {
-            layout.value = { ...layout.value, ...newLayout };
-        });
-    }
 }; 

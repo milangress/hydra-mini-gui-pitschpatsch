@@ -1,6 +1,6 @@
 // Editor integration methods
 import { Logger } from '../utils/logger.js';
-import { actions, lastEvalRange } from '../state/signals.js';
+import { actions, currentEvalRange } from '../state/signals.js';
 
 export const hookIntoEval = () => {
     Logger.log('hooking into eval');
@@ -33,15 +33,18 @@ export const hookIntoHydraEditor = function() {
                 if (this.codeManager?.isUpdating) return;
                 
                 // Only update if we have a last eval range
-                if (lastEvalRange.value) {
+                if (currentEvalRange.value) {
                     // Check if the change is within our last eval range
                     const changeInRange = (
-                        change.from.line >= lastEvalRange.value.start.line &&
-                        change.to.line <= lastEvalRange.value.end.line
+                        change.from.line >= currentEvalRange.value.start.line &&
+                        change.to.line <= currentEvalRange.value.end.line
                     );
                     
                     if (changeInRange) {
-                        this.onCodeChange();
+                        // Get current code and find values
+                        const code = cm.getRange(currentEvalRange.value.start, currentEvalRange.value.end);
+                        actions.updateCode(code);
+                        this.codeManager.findValues(code);
                     }
                 }
             });
