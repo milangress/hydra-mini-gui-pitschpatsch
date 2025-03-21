@@ -23,7 +23,7 @@ async function runBuild() {
                 entry: "hydra-pitschpatsch.js"
             },
             sourcemap: "linked",
-            minify: true,
+            minify: false,
             define: {
                 // Add package info to the bundle
                 __PKG_VERSION__: JSON.stringify(pkg.version),
