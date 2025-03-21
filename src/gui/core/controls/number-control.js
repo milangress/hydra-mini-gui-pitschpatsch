@@ -1,5 +1,7 @@
 import { BaseControl } from './base-control.js';
 import { Logger } from '../../../utils/logger.js';
+import { actions } from '../../../state/signals.js';
+
 
 /**
  * Control for numeric values and option selections
@@ -54,17 +56,10 @@ export class NumberControl extends BaseControl {
         binding.name = controlName;
         
         // Override the onChange handler
-        const originalOnChange = binding.controller.on;
-        binding.controller.on = (event, callback) => {
-            if (event === 'change') {
-                return originalOnChange.call(binding.controller, event, (ev) => {
-                    
-                    
-                    console.log('NumberControl onChange - parameter:', binding.name, ev.value);
-                    actions.updateParameter(binding.name,ev.value );
-                });
-            }
-        };
+        binding.controller.on('change', event => {
+            console.log('NumberControl onChange - parameter:', binding.name, event.value);
+            actions.updateParameter(binding.name,event.value );
+        })
         
         // Add test attributes
         if (binding.controller?.element) {

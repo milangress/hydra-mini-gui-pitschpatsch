@@ -33,10 +33,13 @@ export class CodeValueManager {
         effect(() => {
             const params = parameters.value;
             if (!params.size || this.isUpdating) return;
+            Logger.log('CodeValueManager effect', { params });
 
             for (const [key, value] of params) {
                 const index = parseInt(key.replace('value', ''));
+                Logger.log('CodeValueManager effect - key:', key, 'value:', value, 'index:', index);
                 if (!isNaN(index)) {
+                    Logger.log('CodeValueManager effect - updating value:', { index, value, valuePositions: valuePositions.value, lastEvalRange: lastEvalRange.value });
                     this.updateValue(
                         index,
                         value,
@@ -141,6 +144,7 @@ export class CodeValueManager {
      * @param {{start: any, end: any}} lastEvalRange - The range of code being evaluated
      */
     updateValue(index, newValue, valuePositions, lastEvalRange) {
+        console.log('updateValue', { index, newValue, valuePositions, lastEvalRange});
         if (!window.cm || !lastEvalRange) return;
 
         Logger.log('Updating value:', { index, newValue, lastEvalRange });

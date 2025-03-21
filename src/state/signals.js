@@ -36,6 +36,7 @@ export const actions = {
     updateEvalRange: (range) => lastEvalRange.value = range,
     updateValuePositions: (positions) => valuePositions.value = positions,
     updateParameter: (key, value) => {
+        Logger.log('actions.updateParameter', { key, value });
         const newParams = new Map(parameters.value);
         newParams.set(key, value);
         parameters.value = newParams;
