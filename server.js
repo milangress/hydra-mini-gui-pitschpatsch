@@ -1,5 +1,5 @@
 // Simple Bun server for development
-import { code as allFuncCode } from './hydraTestPageAllFunc.js';
+import { allFuncCode, specialCases } from './hydraTestPageAllFunc.js';
 
 const defaultCode = `
 osc(82,0.09,0.89999)
@@ -33,7 +33,8 @@ osc(5, 1.65, -0.021)
 `;
 
 
-const code = process.env.TEST_MODE === 'allFunc' ? allFuncCode : defaultCode;
+const code = process.env.TEST_MODE === 'allFunc' ? allFuncCode : 
+process.env.TEST_MODE === 'special' ? specialCases : defaultCode;
 
 const loadHydraUrl = `await loadScript("http://localhost:3000/hydra-pitschpatsch.js")`;
 
@@ -98,7 +99,7 @@ Demo page: http://localhost:${server.port}
 `);
 
 // If in test mode, automatically open the Hydra URL
-if (process.env.TEST_MODE === 'allFunc') {
+if (process.env.TEST_MODE === 'allFunc' || process.env.TEST_MODE === 'special') {
     // Use the system's default command to open URLs based on the platform
     const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
     Bun.spawn([cmd, hydraUrl]);
