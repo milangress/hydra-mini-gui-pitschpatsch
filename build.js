@@ -1,6 +1,17 @@
 import { build } from "bun";
 import { copyFile } from "node:fs/promises";
 import { join } from "node:path";
+import pkg from "./package.json";
+
+const banner = `/*!
+ * ${pkg.name} v${pkg.version}
+ * ${pkg.description}
+ * 
+ * @author ${pkg.author}
+ * @license ${pkg.license}
+ * @repository ${pkg.repository.url}
+ */
+`;
 
 async function runBuild() {
     try {
@@ -12,7 +23,13 @@ async function runBuild() {
                 entry: "hydra-pitschpatsch.js"
             },
             sourcemap: "linked",
-            minify: true
+            minify: true,
+            define: {
+                // Add package info to the bundle
+                __PKG_VERSION__: JSON.stringify(pkg.version),
+                __PKG_NAME__: JSON.stringify(pkg.name)
+            },
+            banner
         });
 
         if (!result.success) {
@@ -27,10 +44,6 @@ async function runBuild() {
         );
 
         console.log("Build completed successfully!");
-        console.log("Files in dist:");
-        console.log("- hydra-pitschpatsch.js");
-        console.log("- hydra-pitschpatsch.js.map");
-        console.log("- demo.html");
     } catch (error) {
         console.error("Build failed:", error);
         process.exit(1);
