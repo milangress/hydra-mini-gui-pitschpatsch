@@ -1,5 +1,7 @@
 import { signal, computed, effect } from '@preact/signals-core';
 import { Logger } from '../utils/logger.js';
+import { Parser } from '../utils/parser.js';
+import { codeFormatter } from '../utils/codeFormatter.js';
 
 /**
  * Central state management for Hydra Mini GUI using signals
@@ -112,4 +114,54 @@ export const actions = {
     updateSettings: (newSettings) => settings.value = { ...settings.value, ...newSettings },
     setError: (error) => errors.value = [error],
     clearErrors: () => errors.value = [],
-}; 
+};
+
+// Code generation signals
+export const codeAst = computed(() => {
+  if (!currentCode.value || !currentEvalRange.value) return null;
+  const code = window.cm.getRange(currentEvalRange.value.start, currentEvalRange.value.end);
+  return Parser.parse(code, { locations: true, ecmaVersion: 'latest' });
+});
+
+export const arrowFunctionCode = computed(() => {
+  if (!codeAst.value || !parameters.value.length) return null;
+  const code = window.cm.getRange(currentEvalRange.value.start, currentEvalRange.value.end);
+  
+  // Create map of all parameters as arrow functions
+  const updates = new Map();
+  for (const param of parameters.value) {
+    updates.set(param.index, `() => ${param.key}`);
+  }
+  
+  return codeFormatter.generateCode(codeAst.value, code, updates);
+});
+
+export const variableAssignments = computed(() => {
+  if (!parameters.value.length) return '';
+  // Use parameters.value since it already has the updated values
+  return parameters.value
+    .map(param => `${param.key} = ${param.value}`)
+    .join(';\n');
+});
+
+export const staticCode = computed(() => {
+  if (!codeAst.value) return null;
+  const code = window.cm.getRange(currentEvalRange.value.start, currentEvalRange.value.end);
+  
+  // Create map using parameters which already has updated values
+  const updates = new Map();
+  for (const param of parameters.value) {
+    updates.set(param.index, param.value);
+  }
+  
+  return codeFormatter.generateCode(codeAst.value, code, updates);
+});
+
+export const hasCodeEvaled = signal(false);
+
+export const codeToEval = computed(() => {
+  if (!hasCodeEvaled.value && arrowFunctionCode.value) {
+    return `${variableAssignments.value};\n${arrowFunctionCode.value}`;
+  }
+  return `${variableAssignments.value}`;
+}); 
