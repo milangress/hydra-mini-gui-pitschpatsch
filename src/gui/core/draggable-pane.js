@@ -76,6 +76,9 @@ export class DraggablePane {
 
         // Get current container position
         const rect = this.container.getBoundingClientRect();
+        
+        // Remove right position and set initial left position
+        this.container.style.removeProperty('right');
         this.initialX = rect.left;
         this.initialY = rect.top;
 
