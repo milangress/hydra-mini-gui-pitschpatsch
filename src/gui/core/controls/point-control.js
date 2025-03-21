@@ -93,9 +93,7 @@ export class PointControl extends BaseControl {
             const hydraX = this.mapping.fromDisplay(x);
             const hydraY = this.mapping.fromDisplay(y);
             if (this.parameter) {
-                const baseIndex = this.parameter.index - (this.parameter.paramName.endsWith('X') || this.parameter.paramName.endsWith('x') ? 0 : 1);
-                actions.updateParameter(`value${baseIndex}`, hydraX);
-                actions.updateParameter(`value${baseIndex + 1}`, hydraY);
+                actions.updateParameterValueByKey(this.parameter.key, { x: hydraX, y: hydraY });
             }
         });
 
@@ -116,10 +114,7 @@ export class PointControl extends BaseControl {
                 pointKey: 'point',
                 pointComponent: 'x',
                 mapPoint: this.mapping.mode === 'centered',
-                parameter: this.parameter && {
-                    ...this.parameter,
-                    index: this.parameter.index - (this.parameter.paramName.endsWith('X') || this.parameter.paramName.endsWith('x') ? 0 : 1)
-                }
+                parameter: this.parameter
             },
             {
                 binding: obj,
@@ -129,10 +124,7 @@ export class PointControl extends BaseControl {
                 pointKey: 'point',
                 pointComponent: 'y',
                 mapPoint: this.mapping.mode === 'centered',
-                parameter: this.parameter && {
-                    ...this.parameter,
-                    index: this.parameter.index - (this.parameter.paramName.endsWith('X') || this.parameter.paramName.endsWith('x') ? 0 : 1) + 1
-                }
+                parameter: this.parameter
             }
         ];
     }

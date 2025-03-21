@@ -77,19 +77,19 @@ export class ControlFactory {
         
         if (Array.isArray(controlBindings)) {
             controlBindings.forEach((binding, i) => {
-                const paramIndex = group.params[i]?.index;
-                Logger.log(`ControlFactory binding array [${i}] - paramIndex:`, paramIndex);
-                if (paramIndex !== undefined) {
-                    binding.parameter = group.params[i];
+                const param = group.params[i];
+                Logger.log(`ControlFactory binding array [${i}] - param:`, param);
+                if (param?.key) {
+                    binding.parameter = param;
                     Logger.log(`ControlFactory binding array [${i}] - parameter:`, binding.parameter);
-                    bindings.set(`value${paramIndex}`, binding);
+                    bindings.set(param.key, binding);
                 }
             });
         } else {
             controlBindings.parameter = param;
             Logger.log('ControlFactory single binding - parameter:', controlBindings.parameter);
-            Logger.log('ControlFactory single binding - setting key:', `value${param.index}`);
-            bindings.set(`value${param.index}`, controlBindings);
+            Logger.log('ControlFactory single binding - setting key:', param.key);
+            bindings.set(param.key, controlBindings);
         }
 
         return bindings;

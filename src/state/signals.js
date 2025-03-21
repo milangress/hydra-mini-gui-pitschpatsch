@@ -30,10 +30,12 @@ export const hasErrors = computed(() => errors.value.length > 0);
 export const hasParameters = computed(() => currentParameters.value.length > 0);
 
 export const parameters = computed(() => {
-    return currentParameters.value.map(param => ({
+    const params = currentParameters.value.map(param => ({
         ...param,
-        value: parametersMap.value.get(param.id) ?? param.value
+        value: parametersMap.value.get(param.index) ?? param.value
     }));
+    console.log('parameters computed', params);
+    return params;
 });
 
 effect(() => {
@@ -59,9 +61,13 @@ function updateParameterValue(identifier, value, type = 'key') {
         // Find the parameter with matching key and get its id
         const param = currentParameters.value.find(p => p.key === identifier);
         if (param) {
-            identifier = param.id; // Convert key to id
+            identifier = param.index; // Convert key to id
         } else {
             Logger.log('Parameter not found for key:', identifier);
+            return;
+        }
+        if (identifier === undefined) {
+            Logger.error('Parameter not found for key:', identifier);
             return;
         }
     }

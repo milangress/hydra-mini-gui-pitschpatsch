@@ -51,22 +51,12 @@ export class NumberControl extends BaseControl {
         Logger.log('NumberControl createBinding - parameter before:', this.parameter);
         const binding = super.createBinding(folder, tweakpaneAdapter);
         
-        // Use the original value${index} naming scheme
-        const controlName = `value${this.parameter.index}`;
-        binding.name = controlName;
-        
-        // Override the onChange handler
-        binding.controller.on('change', event => {
-            console.log('NumberControl onChange - parameter:', binding.name, event.value);
-            actions.updateParameter(binding.name,event.value );
-        })
-        
-        // Add test attributes
+        // Use the parameter key for data attributes
         if (binding.controller?.element) {
-            binding.controller.element.setAttribute('data-hydra-param', controlName);
+            binding.controller.element.setAttribute('data-hydra-param', this.parameter.key);
             const input = binding.controller.element.querySelector('input');
             if (input) {
-                input.setAttribute('data-hydra-input', controlName);
+                input.setAttribute('data-hydra-input', this.parameter.key);
             }
         }
         

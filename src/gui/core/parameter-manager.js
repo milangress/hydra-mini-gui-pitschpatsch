@@ -91,9 +91,8 @@ export class ParameterManager {
     /**
      * Resets a specific control to its original value
      */
-    revertValue(index, originalValue) {
-        const controlName = `value${index}`;
-        const control = this.controls.get(controlName);
+    revertValue(key, originalValue) {
+        const control = this.controls.get(key);
         if (control) {
             control.originalValue = originalValue;
             ParameterUtils.resetControlValue(control);

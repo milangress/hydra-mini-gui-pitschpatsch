@@ -56,10 +56,7 @@ export class ColorControl extends BaseControl {
         controller.on('change', event => {
             const { r, g, b } = event.value;
             if (this.parameter) {
-                const baseIndex = this.parameter.index - (this.parameter.paramName === 'r' ? 0 : this.parameter.paramName === 'g' ? 1 : 2);
-                actions.updateParameter(`value${baseIndex}`, r);
-                actions.updateParameter(`value${baseIndex + 1}`, g);
-                actions.updateParameter(`value${baseIndex + 2}`, b);
+                actions.updateParameterValueByKey(this.parameter.key, { r, g, b });
             }
         });
 
@@ -71,16 +68,13 @@ export class ColorControl extends BaseControl {
             }
         }
 
-        return ['r', 'g', 'b'].map((component, i) => ({
+        return ['r', 'g', 'b'].map((component) => ({
             binding: obj,
             controller,
             originalValue: this.originalValues[component],
             isColor: true,
             colorComponent: component,
-            parameter: this.parameter && {
-                ...this.parameter,
-                index: this.parameter.index - (this.parameter.paramName === 'r' ? 0 : this.parameter.paramName === 'g' ? 1 : 2) + i
-            }
+            parameter: this.parameter
         }));
     }
 
