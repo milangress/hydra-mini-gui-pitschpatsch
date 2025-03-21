@@ -6,7 +6,7 @@ export class Logger {
         const stack = error.stack.split('\n')[3]; // Skip logger frames
         const match = stack.match(/at\s+(?:.*\s+\()?(.+):(\d+):(\d+)/);
         if (match) {
-            const url = document?.currentScript?.src || 'http://localhost:3000/hydra-mini-gui.js'
+            const url = document?.currentScript?.src || 'http://localhost:3000/hydra-pitschpatsch.js'
             const [, file, line, column] = match;
             // return `[${file.split('/').pop()}:${line}]`;
             return url + ':' + line;
