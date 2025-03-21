@@ -3,7 +3,7 @@ import { TweakpaneAdapter } from '../adapters/tweakpane-adapter.js';
 import { ParameterManager } from './parameter-manager.js';
 import { SettingsPage } from './settings-page.js';
 import { Logger } from '../../utils/logger.js';
-import { layout, parameters, settings, errors, actions, currentCode, valuePositions } from '../../state/signals.js';
+import { layout, actions, currentCode, valuePositions } from '../../state/signals.js';
 
 /**
  * New GUIManager that separates concerns and is more testable
@@ -117,13 +117,6 @@ export class GUIManager {
         }
     }
 
-    /**
-     * Updates a specific control value
-     */
-    updateControlValue(controlName, newValue) {
-        this.parameterManager.updateControlValue(controlName, newValue);
-        actions.updateParameter(controlName, newValue);
-    }
 
     /**
      * Cleans up resources

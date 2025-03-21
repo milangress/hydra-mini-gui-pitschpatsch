@@ -215,7 +215,7 @@ export class CodeValueManager {
 
             // Evaluate both variable assignments and arrow function code
             const varAssignments = Array.from(this._variableMap.entries())
-                .map(([idx, name]) => `${name} = ${this._pendingChanges.find(c => c.index === idx)?.newValue ?? valuePositions[idx].value}`)
+                .map(([idx, name]) => `${name} = ${this._pendingChanges.find(c => c.index === idx)?.newValue || valuePositions[idx].value}`)
                 .join(';\n');
             
             const arrowCode = `${varAssignments};\n${newArrowCode}`;

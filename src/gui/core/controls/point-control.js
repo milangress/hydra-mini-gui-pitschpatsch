@@ -1,5 +1,6 @@
 import { BaseControl } from './base-control.js';
 import { Logger } from '../../../utils/logger.js';
+import { actions } from '../../../state/signals.js';
 
 /**
  * Control for point values (x,y coordinates)
@@ -93,11 +94,8 @@ export class PointControl extends BaseControl {
             const hydraY = this.mapping.fromDisplay(y);
             if (this.parameter) {
                 const baseIndex = this.parameter.index - (this.parameter.paramName.endsWith('X') || this.parameter.paramName.endsWith('x') ? 0 : 1);
-                this.onChange?.(baseIndex, hydraX);
-                this.onChange?.(baseIndex + 1, hydraY);
-            } else {
-                this.onChange?.(this.name + '_x', hydraX);
-                this.onChange?.(this.name + '_y', hydraY);
+                actions.updateParameter(`value${baseIndex}`, hydraX);
+                actions.updateParameter(`value${baseIndex + 1}`, hydraY);
             }
         });
 
@@ -153,7 +151,8 @@ export class PointControl extends BaseControl {
      * @returns {boolean}
      */
     static canHandle(param) {
-        Logger.log('PointControl checking if can handle:', param.paramType);
-        return param.paramType === 'point' || param.paramType === 'vec2';
+        return param.paramType === 'point' || 
+               (param.paramName && (param.paramName.endsWith('X') || param.paramName.endsWith('Y') ||
+                                  param.paramName.endsWith('x') || param.paramName.endsWith('y')));
     }
 } 

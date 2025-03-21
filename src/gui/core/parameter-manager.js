@@ -2,7 +2,6 @@ import { Parser } from 'acorn';
 import { ParameterUtils } from '../utils/parameter-utils.js';
 import { ControlFactory } from './controls/control-factory.js';
 import { Logger } from '../../utils/logger.js';
-import { actions } from '../../state/signals.js';
 
 /**
  * Manages parameter organization and control creation
@@ -58,7 +57,6 @@ export class ParameterManager {
             const groupControls = ControlFactory.createControls(
                 groupFolder, 
                 group.params,
-                (index, value) => actions.updateParameter(`value${index}`, value),
                 this.tweakpaneAdapter
             );
             

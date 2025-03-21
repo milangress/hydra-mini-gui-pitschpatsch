@@ -1,9 +1,9 @@
 import { BaseControl } from './base-control.js';
 import { Logger } from '../../../utils/logger.js';
+import { actions } from '../../../state/signals.js';
 
 /**
- * Control for color values (r,g,b)
- * Groups r, g, b parameters into a single color picker
+ * Control for RGB color values
  */
 export class ColorControl extends BaseControl {
     /**
@@ -13,9 +13,9 @@ export class ColorControl extends BaseControl {
     constructor(config) {
         super(config);
         this.originalValues = {
-            r: config.value,
-            g: config.value,
-            b: config.value
+            r: this.value,
+            g: this.value,
+            b: this.value
         };
     }
 
@@ -57,13 +57,9 @@ export class ColorControl extends BaseControl {
             const { r, g, b } = event.value;
             if (this.parameter) {
                 const baseIndex = this.parameter.index - (this.parameter.paramName === 'r' ? 0 : this.parameter.paramName === 'g' ? 1 : 2);
-                this.onChange?.(baseIndex, r);
-                this.onChange?.(baseIndex + 1, g);
-                this.onChange?.(baseIndex + 2, b);
-            } else {
-                this.onChange?.(this.name + '_r', r);
-                this.onChange?.(this.name + '_g', g);
-                this.onChange?.(this.name + '_b', b);
+                actions.updateParameter(`value${baseIndex}`, r);
+                actions.updateParameter(`value${baseIndex + 1}`, g);
+                actions.updateParameter(`value${baseIndex + 2}`, b);
             }
         });
 
@@ -102,7 +98,7 @@ export class ColorControl extends BaseControl {
      * @returns {boolean}
      */
     static canHandle(param) {
-        Logger.log('ColorControl checking if can handle:', param.paramType);
-        return param.paramType === 'color' || param.paramType === 'vec4';
+        return param.paramType === 'color' || 
+               (param.paramName && ['r', 'g', 'b'].includes(param.paramName.toLowerCase()));
     }
 } 

@@ -22,16 +22,15 @@ export class ControlFactory {
      * Creates controls for a set of parameters
      * @param {Object} folder - The folder to add controls to
      * @param {import('../types/controls.js').ControlParameter[]} params - The parameters to create controls for
-     * @param {Function} onChange - Callback for value changes
      * @param {Object} tweakpaneAdapter - The Tweakpane adapter
      * @returns {Map<string, import('../types/controls.js').ControlBinding>}
      */
-    static createControls(folder, params, onChange, tweakpaneAdapter) {
+    static createControls(folder, params, tweakpaneAdapter) {
         const controls = new Map();
         const groups = ParameterGroupDetector.detectGroups(params);
 
         groups.forEach(group => {
-            const bindings = this.createControlForGroup(group, folder, onChange, tweakpaneAdapter);
+            const bindings = this.createControlForGroup(group, folder, tweakpaneAdapter);
             for (const [key, binding] of bindings) {
                 controls.set(key, binding);
             }
@@ -44,7 +43,7 @@ export class ControlFactory {
      * Creates a control for a parameter group
      * @private
      */
-    static createControlForGroup(group, folder, onChange, tweakpaneAdapter) {
+    static createControlForGroup(group, folder, tweakpaneAdapter) {
         const bindings = new Map();
         const param = group.params[0];
         
@@ -54,12 +53,7 @@ export class ControlFactory {
         const config = {
             name: param.paramName,
             value: param.value,
-            index: param.parameterIndex ?? param.index,
             defaultValue: param.paramDefault,
-            onChange: (index, value) => {
-                Logger.log('ControlFactory onChange called - index:', index, 'value:', value);
-                onChange(index, value);
-            },
             parameter: param,
             options: {
                 label: group.metadata.label ?? param.paramName
