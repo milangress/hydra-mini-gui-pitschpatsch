@@ -20,17 +20,17 @@ var epsilon=0.003
 var func = () => noise(9.9,0.35)
 solid(3.45,0,255).layer(func().luma(-epsilon,0)).out(o0)
 
-
-osc(5, 1.65, -0.021)
-    .kaleid([2,3.3,5,7,8,9,10].fast(0.1))
-    .color(0.5, 0.81)
-    .colorama(0.4)
-    .rotate(0.009,()=>Math.sin(time)* -0.001 )
-    .modulateRotate(o0,()=>Math.sin(time) * 0.003)
-    .modulate(o0, 0.9)
-    .scale(0.9)
-    .out(o0)
 `;
+
+// osc(5, 1.65, -0.021)
+//     .kaleid([2,3.3,5,7,8,9,10].fast(0.1))
+//     .color(0.5, 0.81)
+//     .colorama(0.4)
+//     .rotate(0.009,()=>Math.sin(time)* -0.001 )
+//     .modulateRotate(o0,()=>Math.sin(time) * 0.003)
+//     .modulate(o0, 0.9)
+//     .scale(0.9)
+//     .out(o0)
 
 const encodedCode = btoa(code);
 const hydraUrl = `https://hydra.ojack.xyz/?code=${encodedCode}`;

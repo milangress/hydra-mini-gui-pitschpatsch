@@ -1,4 +1,5 @@
 import { DEFAULT_GUI_STYLES } from '../core/types/styles.js';
+import { DraggablePane } from '../core/draggable-pane.js';
 
 /**
  * Handles all DOM-specific operations
@@ -7,6 +8,7 @@ export class DOMAdapter {
     constructor() {
         this.container = null;
         this.styleElement = null;
+        this.draggablePane = null;
     }
 
     /**
@@ -79,6 +81,9 @@ export class DOMAdapter {
         this.mountContainer(this.container);
         this.applyStyles();
         
+        // Initialize draggable functionality
+        this.draggablePane = new DraggablePane(this.container);
+        
         return this.container;
     }
 
@@ -123,6 +128,10 @@ export class DOMAdapter {
      * Cleans up DOM elements
      */
     cleanup() {
+        if (this.draggablePane) {
+            this.draggablePane.cleanup();
+            this.draggablePane = null;
+        }
         if (this.container) {
             this.container.remove();
             this.container = null;
