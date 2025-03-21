@@ -4,7 +4,7 @@ import { ParameterManager } from './parameter-manager.js';
 import { SettingsPage } from './settings-page.js';
 import { Logger } from '../../utils/logger.js';
 import { effect } from '@preact/signals-core';
-import { layout, actions, currentCode, valuePositions } from '../../state/signals.js';
+import { layout, actions, currentCode, currentParameters } from '../../state/signals.js';
 
 /**
  * New GUIManager that separates concerns and is more testable
@@ -23,9 +23,12 @@ export class GUIManager {
 
         // Add effect to automatically update GUI when store changes
         effect(() => {
-            const positions = valuePositions.value;
+            const positions = currentParameters.value;
             const code = currentCode.value;
-            this._updateGUI(positions, code);
+            if (positions.length > 0 && code) {
+                console.log('gui-manager effect', positions, code);
+                this._updateGUI(positions, code);
+            }
         });
     }
 

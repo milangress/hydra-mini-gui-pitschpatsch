@@ -29,7 +29,7 @@ export class BaseControl {
 
         controller.on('change', event => {
             this.value = event.value;
-            actions.updateParameter(
+            actions.updateParameterValueById(
                 this.parameter?.index !== undefined ? `value${this.parameter.index}` : this.name,
                 this.value
             );

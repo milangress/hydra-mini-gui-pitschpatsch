@@ -11,10 +11,8 @@ export const currentEvalCode = signal('');
 export const currentEvalRange = signal(null);
 export const currentParameters = signal([]);
 
-export const valuePositions = signal([]);
-
 // GUI state
-export const parameters = signal(new Map());
+export const parametersMap = signal(new Map());
 export const settings = signal({
     isReset: false,
     showSettings: false
@@ -29,7 +27,14 @@ export const guiReady = signal(false);
 
 // Computed values
 export const hasErrors = computed(() => errors.value.length > 0);
-export const hasParameters = computed(() => valuePositions.value.length > 0);
+export const hasParameters = computed(() => currentParameters.value.length > 0);
+
+export const parameters = computed(() => {
+    return currentParameters.value.map(param => ({
+        ...param,
+        value: parametersMap.value.get(param.id) ?? param.value
+    }));
+});
 
 effect(() => {
     Logger.log('currentEvalRange Signal updated', currentEvalRange.value);
@@ -41,33 +46,52 @@ effect(() => {
     Logger.log('currentCode Signal updated', currentCode.value);
 });
 effect(() => {
-    Logger.log('valuePositions Signal updated', valuePositions.value);
-});
-effect(() => {
-    Logger.log('parameters Signal updated', parameters.value);
+    Logger.log('parametersMap Signal updated', parametersMap.value);
 });
 effect(() => {
     Logger.log('settings Signal updated', settings.value);
 });
 
+function updateParameterValue(identifier, value, type = 'key') {
+    Logger.log(`actions.updateParameterValue by ${type}`, { [type]: identifier, value });
+    
+    if (type === 'key') {
+        // Find the parameter with matching key and get its id
+        const param = currentParameters.value.find(p => p.key === identifier);
+        if (param) {
+            identifier = param.id; // Convert key to id
+        } else {
+            Logger.log('Parameter not found for key:', identifier);
+            return;
+        }
+    }
+    
+    // Update the map with the id and value
+    const newMap = new Map(parametersMap.value);
+    newMap.set(identifier, value);
+    parametersMap.value = newMap;
+}
+
 /**
  * Action creators - these replace the old dispatch actions
  */
 export const actions = {
-    evalResult: ({result, code, range, parameters}) => {
+    evalResult: ({result, code, range}) => {
         currentEvalResult.value = result;
         currentEvalCode.value = code;
         currentEvalRange.value = range;
+    },
+    currentParameters: (parameters) => {
+        console.log('actions.currentParameters', parameters);
         currentParameters.value = parameters;
     },
-    currentParameters: () => currentParameters.value,
-    updateCode: (code) => currentCode.value = code,
-    updateParameter: (key, value) => {
-        Logger.log('actions.updateParameter', { key, value });
-        const newParams = new Map(parameters.value);
-        newParams.set(key, value);
-        parameters.value = newParams;
+    updateParameterValueByKey: (key, value) => {
+        updateParameterValue(key, value, 'key');
     },
+    updateParameterValueByIndex: (index, value) => {
+        updateParameterValue(index, value, 'index');
+    },
+    updateCode: (code) => currentCode.value = code,
     updateEvalRange: (range) => currentEvalRange.value = range,
     updateSettings: (newSettings) => settings.value = { ...settings.value, ...newSettings },
     setError: (error) => errors.value = [error],

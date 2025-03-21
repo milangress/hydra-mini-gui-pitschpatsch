@@ -6,7 +6,6 @@ import { hookIntoEval, hookIntoHydraEditor } from './editor/editor-integration.j
 import { GUIManager } from './gui/core/gui-manager.js';
 import { CodeValueManager } from './editor/code-value-manager.js';
 import { Logger } from './utils/logger.js';
-import { actions, currentCode, currentEvalCode, currentEvalRange, valuePositions } from './state/signals.js';
 
 export class HydraMiniGUI {
     constructor() {

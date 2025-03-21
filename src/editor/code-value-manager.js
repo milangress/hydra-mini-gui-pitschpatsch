@@ -5,8 +5,7 @@ import { CodeFormatter } from './code-formatter.js';
 import { Logger } from '../utils/logger.js';
 import { removeLoadScriptLines } from '../utils/code-utils.js';
 import { effect } from '@preact/signals-core';
-import { parameters, valuePositions } from '../state/signals.js';
-import { actions } from '../state/signals.js';
+import { actions, parameters, currentParameters, currentCode, currentEvalRange } from '../state/signals.js';
 
 /**
  * Manages the finding and updating of numeric values in Hydra code, handling both static values
@@ -23,7 +22,7 @@ export class CodeValueManager {
         this._updateTimeout = null;
         this._pendingChanges = [];
         this._undoGroup = null;
-        this.valuePositions = null;
+        this.currentParameters = null;
         this._variableMap = new Map(); // Track which values have been converted to variables
         this._arrowFunctionCode = null; // Track current code with all arrow functions
         
@@ -40,16 +39,23 @@ export class CodeValueManager {
                 const index = parseInt(key.replace('value', ''));
                 Logger.log('CodeValueManager effect - key:', key, 'value:', value, 'index:', index);
                 if (!isNaN(index)) {
-                    Logger.log('CodeValueManager effect - updating value:', { index, value, valuePositions: valuePositions.value });
+                    Logger.log('CodeValueManager effect - updating value:', { index, value });
                     this.updateValue(
                         index,
                         value,
-                        valuePositions.value,
+                        currentEvalRange.value
                     );
                 }
             }
-        });
-    }
+        })
+
+    effect(() => {
+        const newCurrentCode = currentCode.value;
+        if (!newCurrentCode) return;
+        Logger.log('currentEvalRange Signal updated triggering findValues');
+        this.findValues(newCurrentCode);
+    });
+}
 
     /**
      * Find all numeric values and source/output references in the given code and return their positions and metadata
@@ -68,39 +74,16 @@ export class CodeValueManager {
             });
 
             const foundValues = this._astTraverser.findValues(ast, cleanCode);
+
+            console.log('foundValues', foundValues);
             // Update store directly with found values
             actions.currentParameters(foundValues);
             return foundValues;
         } catch (error) {
-            Logger.error('Error finding values:', error);
+            console.error('Error finding values:', error);
             actions.currentParameters([]);
             return [];
         }
-    }
-
-    /**
-     * Generate a unique variable name for a value based on its context in the code.
-     * Includes function name, parameter name, and position information to ensure uniqueness.
-     * 
-     * Examples:
-     * - osc(10, 0.5) -> osc_freq_line1_pos3_value, osc_sync_line1_pos7_value
-     * - osc(10).rotate(6.22) -> osc_freq_line1_pos3_value, rotate_angle_line1_pos12_value
-     * 
-     * @param {Object} valuePosition - Position information for the value
-     * @param {string} valuePosition.functionName - Name of the function containing the value
-     * @param {string} valuePosition.paramName - Name of the parameter (from transform definition)
-     * @param {number} valuePosition.lineNumber - Line number where the value appears
-     * @param {number} valuePosition.functionStartCh - Starting character position of the function
-     * @param {number} valuePosition.ch - Character position of the value
-     * @returns {string} Generated unique variable name
-     * @private
-     */
-    _generateVariableName(valuePosition) {
-        const paramPart = valuePosition.paramName ? 
-            `_${valuePosition.paramName}` : 
-            `_param${valuePosition.parameterIndex}`;
-            
-        return `${valuePosition.functionName}${paramPart}_line${valuePosition.lineNumber}_pos${valuePosition.ch}_value`;
     }
 
     /**
@@ -171,7 +154,7 @@ export class CodeValueManager {
 
         try {
             const code = cm.getRange(lastEvalRange.start, lastEvalRange.end);
-            const variableName = this._generateVariableName(pos);
+            const variableName = pos.key;
 
             // Check if this value has already been converted to a variable
             if (this._variableMap.has(index)) {

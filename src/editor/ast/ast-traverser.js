@@ -99,6 +99,30 @@ export class ASTTraverser {
     }
 
     /**
+     * Generate a unique key for a value based on its context in the code.
+     * Includes function name, parameter name, and position information to ensure uniqueness.
+     * 
+     * Examples:
+     * - osc(10, 0.5) -> osc_freq_line1_pos3_value, osc_sync_line1_pos7_value
+     * - osc(10).rotate(6.22) -> osc_freq_line1_pos3_value, rotate_angle_line1_pos12_value
+     * 
+     * @param {Object} valuePosition - Position information for the value
+     * @param {string} valuePosition.functionName - Name of the function containing the value
+     * @param {string} valuePosition.paramName - Name of the parameter (from transform definition)
+     * @param {number} valuePosition.lineNumber - Line number where the value appears
+     * @param {number} valuePosition.ch - Character position of the value
+     * @returns {string} Generated unique variable name
+     * @private
+     */
+    _generateKey(valuePosition) {
+        const paramPart = valuePosition.paramName ? 
+            `_${valuePosition.paramName}` : 
+            `_param${valuePosition.parameterIndex}`;
+            
+        return `${valuePosition.functionName}${paramPart}_line${valuePosition.lineNumber}_pos${valuePosition.ch}_value`;
+    }
+
+    /**
      * Traverses an AST to find all numeric values, source references, and output references.
      * For each value found, collects detailed metadata including:
      * - Value and its type (number, source, output)
@@ -137,6 +161,7 @@ export class ASTTraverser {
             // Bind the instance methods we need in the traveler
             const getFunctionName = this._getFunctionNameFromAST.bind(this);
             const getParamCount = this._getParameterCount.bind(this);
+            const generateKey = this._generateKey.bind(this);
             const hydra = this.hydra;
 
             const traveler = makeTraveler({
@@ -214,7 +239,13 @@ export class ASTTraverser {
                                     paramName,
                                     paramType,
                                     paramDefault,
-                                    type: 'number'
+                                    type: 'number',
+                                    key: generateKey({
+                                        functionName: functionInfo.name,
+                                        paramName,
+                                        lineNumber: lineStart,
+                                        ch: startColumn,
+                                    })
                                 });
                             }
                         }
@@ -272,7 +303,13 @@ export class ASTTraverser {
                                 paramType,
                                 paramDefault,
                                 type: isOutput ? 'output' : 'source',
-                                options: isOutput ? availableOutputs : availableSources
+                                options: isOutput ? availableOutputs : availableSources,
+                                key: generateKey({
+                                    functionName: functionInfo?.name,
+                                    paramName,
+                                    lineNumber: lineStart,
+                                    ch: node.loc.start.column,
+                                })
                             });
                         }
                     }
@@ -286,7 +323,7 @@ export class ASTTraverser {
 
             traveler.go(ast, { parents: [], hydra });
         } catch (error) {
-            Logger.error('Error finding values:', error);
+            console.error('Error finding values:', error);
         }
 
         return matches;
