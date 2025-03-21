@@ -16,23 +16,37 @@ export class DraggablePane {
         this.onDrag = this.onDrag.bind(this);
         this.onDragEnd = this.onDragEnd.bind(this);
         
-        this.init();
+        // Wait a bit for Tweakpane to be initialized
+        setTimeout(() => this.init(), 100);
     }
 
     /**
      * Initialize draggable functionality
      */
     init() {
-        // Find the title bar element which will be used as the drag handle
-        this.dragBar = this.container.querySelector('.tp-rotv_t');
+        // Try different selectors to find the drag handle
+        const selectors = [
+            '.tp-rotv_t',
+            '.hydra-mini-gui>div>button',
+            // Add more selectors if needed
+        ];
+
+        for (const selector of selectors) {
+            this.dragBar = this.container.querySelector(selector);
+            if (this.dragBar) {
+                console.log('DraggablePane: Found drag handle using selector:', selector);
+                break;
+            }
+        }
+
         if (!this.dragBar) {
-            console.warn('DraggablePane: Could not find title bar element (.tp-rotv_t)');
+            console.warn('DraggablePane: Could not find any suitable drag handle. DOM structure:', this.container.innerHTML);
+            // Try again after a short delay
+            setTimeout(() => this.init(), 500);
             return;
         }
 
-        console.log('DraggablePane: Found title bar element', this.dragBar);
-
-        // Make the title bar look draggable
+        // Make the drag handle look draggable
         this.dragBar.style.cursor = 'grab';
         this.dragBar.classList.add('draggable');
         
