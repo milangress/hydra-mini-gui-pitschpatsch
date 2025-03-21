@@ -41,6 +41,7 @@ export const actions = {
         newParams.set(key, value);
         parameters.value = newParams;
     },
+    updateLastEvalRange: (range) => lastEvalRange.value = range,
     updateSettings: (newSettings) => settings.value = { ...settings.value, ...newSettings },
     setError: (error) => errors.value = [error],
     clearErrors: () => errors.value = [],

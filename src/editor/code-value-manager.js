@@ -44,7 +44,6 @@ export class CodeValueManager {
                         index,
                         value,
                         valuePositions.value,
-                        lastEvalRange.value
                     );
                 }
             }

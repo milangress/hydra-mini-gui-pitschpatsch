@@ -30,30 +30,6 @@ export class HydraMiniGUI {
         window._hydraGui = this;
     }
 
-    updateValue(index, newValue) {
-        Logger.log('updateValue', { index, newValue });
-        if (isNaN(index)) {
-            Logger.error('Invalid index:', index);
-            return;
-        }
-        try {
-            // Update both editor and evaluation immediately
-            this.codeManager.updateValue(
-                index,
-                newValue,
-                valuePositions.value,
-                lastEvalRange.value
-            );
-
-            // Update our current code to match the new state
-            if (window.cm && lastEvalRange.value) {
-                const code = window.cm.getRange(lastEvalRange.value.start, lastEvalRange.value.end);
-                actions.updateCode(code);
-            }
-        } catch (error) {
-            Logger.error('Error updating value:', error);
-        }
-    }
 
     updateGUI() {
         // Find values in current code
