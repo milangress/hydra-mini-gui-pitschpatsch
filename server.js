@@ -35,7 +35,12 @@ solid(3.45,0,255).layer(func().luma(-epsilon,0)).out(o0)
 
 const code = process.env.TEST_MODE === 'allFunc' ? allFuncCode : defaultCode;
 
-const encodedCode = btoa(code);
+// Helper function to properly encode the code for URL - matching Hydra's implementation
+function encodeForHydraURL(code) {
+  return btoa(encodeURIComponent(code));
+}
+
+const encodedCode = encodeForHydraURL(code);
 const hydraUrl = `https://hydra.ojack.xyz/?code=${encodedCode}`;
 
 // Build the bundle
