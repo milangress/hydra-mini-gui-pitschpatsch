@@ -54,14 +54,15 @@ export class ControlFactory {
         const config = {
             name: param.paramName,
             value: param.value,
+            index: param.parameterIndex ?? param.index,
             defaultValue: param.paramDefault,
-            onChange: (name, value) => {
-                Logger.log('ControlFactory onChange called - name:', name, 'value:', value);
-                onChange(name, value);
+            onChange: (index, value) => {
+                Logger.log('ControlFactory onChange called - index:', index, 'value:', value);
+                onChange(index, value);
             },
             parameter: param,
             options: {
-                label: group.metadata.label || param.paramName
+                label: group.metadata.label ?? param.paramName
             }
         };
 

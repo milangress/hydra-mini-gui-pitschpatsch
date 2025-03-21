@@ -36,6 +36,8 @@ export class HydraMiniGUI {
     updateGUI() {
         try {
             this.valuePositions = this.codeManager.findValues(this.currentCode);
+            Logger.log('updateGUI', { currentCode: this.currentCode, valuePositions: this.valuePositions });
+
             this.guiManager.updateGUI(this.currentCode, this.valuePositions, this.updateValue.bind(this));
         } catch (error) {
             Logger.error('Error updating GUI:', error);
@@ -43,6 +45,11 @@ export class HydraMiniGUI {
     }
 
     updateValue(index, newValue) {
+        Logger.log('updateValue', { index, newValue });
+        if (isNaN(index)) {
+            Logger.error('Invalid index:', index    );
+            return;
+        }
         try {
             // Update both editor and evaluation immediately
             this.codeManager.updateValue(

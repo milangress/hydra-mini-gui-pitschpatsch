@@ -23,8 +23,8 @@ export class BaseControl {
      */
     _processOptions(options) {
         return {
-            label: options.label || this.parameter?.paramName || this.name,
-            readonly: options.readonly || false
+            label: options.label ?? this.parameter?.paramName ?? this.name,
+            readonly: options.readonly ?? false
         };
     }
 

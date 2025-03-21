@@ -130,8 +130,8 @@ export class CodeFormatter {
         }
 
         // Find identifiers (sources/outputs)
-        const availableOutputs = Array.from({ length: 4 }, (_, i) => this.hydra?.o?.[i]?.label || `o${i}`);
-        const availableSources = Array.from({ length: 4 }, (_, i) => this.hydra?.s?.[i]?.label || `s${i}`);
+        const availableOutputs = Array.from({ length: 4 }, (_, i) => this.hydra?.o?.[i]?.label ?? `o${i}`);
+        const availableSources = Array.from({ length: 4 }, (_, i) => this.hydra?.s?.[i]?.label ?? `s${i}`);
         const validIdentifiers = [...availableOutputs, ...availableSources];
 
         let identifierMatch;
@@ -187,8 +187,8 @@ export class CodeFormatter {
         const formattingGenerator = Object.create(GENERATOR);
         
         // Get available sources and outputs for validation
-        const availableOutputs = Array.from({ length: 4 }, (_, i) => this.hydra?.o?.[i]?.label || `o${i}`);
-        const availableSources = Array.from({ length: 4 }, (_, i) => this.hydra?.s?.[i]?.label || `s${i}`);
+        const availableOutputs = Array.from({ length: 4 }, (_, i) => this.hydra?.o?.[i]?.label ?? `o${i}`);
+        const availableSources = Array.from({ length: 4 }, (_, i) => this.hydra?.s?.[i]?.label ?? `s${i}`);
         const validIdentifiers = [...availableOutputs, ...availableSources];
 
         Object.assign(formattingGenerator, {
@@ -199,8 +199,8 @@ export class CodeFormatter {
 
             MemberExpression(node, state) {
                 this[node.object.type](node.object, state);
-                const indent = originalStructure.indentation.get(this._currentLine) || '';
-                const dots = originalStructure.dotOperators.get(this._currentLine) || [];
+                const indent = originalStructure.indentation.get(this._currentLine) ?? '';
+                const dots = originalStructure.dotOperators.get(this._currentLine) ?? [];
                 
                 if (dots.length > 0) {
                     state.write('.');

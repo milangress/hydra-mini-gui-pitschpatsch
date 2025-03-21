@@ -29,7 +29,7 @@ export class ColorControl extends BaseControl {
         const baseOptions = super._processOptions(options);
         return {
             ...baseOptions,
-            type: options.type || 'float'
+            type: options.type ?? 'float'
         };
     }
 

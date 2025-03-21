@@ -113,9 +113,9 @@ export class GUIManager {
                 this.parametersTab, 
                 currentCode, 
                 valuePositions,
-                (name, value) => {
-                    onValueChange(name, value);
-                    this.dispatch(actions.updateParameter(name, value));
+                (index, value) => {
+                    onValueChange(index, value);
+                    this.dispatch(actions.updateParameter(index, value));
                 }
             );
 

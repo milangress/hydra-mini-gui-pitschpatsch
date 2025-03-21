@@ -131,8 +131,8 @@ export class ASTTraverser {
 
         try {
             // Get available sources and outputs from hydra
-            const availableOutputs = Array.from({ length: 4 }, (_, i) => this.hydra?.o?.[i]?.label || `o${i}`);
-            const availableSources = Array.from({ length: 4 }, (_, i) => this.hydra?.s?.[i]?.label || `s${i}`);
+            const availableOutputs = Array.from({ length: 4 }, (_, i) => this.hydra?.o?.[i]?.label ?? `o${i}`);
+            const availableSources = Array.from({ length: 4 }, (_, i) => this.hydra?.s?.[i]?.label ?? `s${i}`);
 
             // Bind the instance methods we need in the traveler
             const getFunctionName = this._getFunctionNameFromAST.bind(this);
@@ -158,8 +158,8 @@ export class ASTTraverser {
                             const lineStart = (node.loc?.start?.line ?? 1) - 1;
                             
                             // Try to get function name from AST first
-                            let functionInfo = getFunctionName(node, state.parents || []);
-                            let paramCount = getParamCount(node, state.parents || []);
+                            let functionInfo = getFunctionName(node, state.parents ?? []);
+                            let paramCount = getParamCount(node, state.parents ?? []);
 
                             // Fall back to regex if AST method fails
                             if (!functionInfo && line) {
@@ -185,7 +185,7 @@ export class ASTTraverser {
                                 // Get transform info for parameter name
                                 const transform = state.hydra?.generator?.glslTransforms?.[functionInfo.name];
                                 const paramInfo = transform?.inputs?.[paramCount];
-                                const paramName = paramInfo?.name || `val${paramCount + 1}`;
+                                const paramName = paramInfo?.name ?? `val${paramCount + 1}`;
                                 const paramType = paramInfo?.type;
                                 const paramDefault = paramInfo?.default;
 
@@ -230,8 +230,8 @@ export class ASTTraverser {
                             const line = code.split('\n')[lineStart];
                             
                             // Try to get function name from AST first
-                            let functionInfo = getFunctionName(node, state.parents || []);
-                            let paramCount = getParamCount(node, state.parents || []);
+                            let functionInfo = getFunctionName(node, state.parents ?? []);
+                            let paramCount = getParamCount(node, state.parents ?? []);
 
                             // Fall back to regex if AST method fails
                             if (!functionInfo && line) {
@@ -255,7 +255,7 @@ export class ASTTraverser {
                             // Get transform info for parameter name
                             const transform = state.hydra?.generator?.glslTransforms?.[functionInfo?.name];
                             const paramInfo = transform?.inputs?.[paramCount];
-                            const paramName = paramInfo?.name || `val${paramCount + 1}`;
+                            const paramName = paramInfo?.name ?? `val${paramCount + 1}`;
                             const paramType = paramInfo?.type;
                             const paramDefault = paramInfo?.default;
 
