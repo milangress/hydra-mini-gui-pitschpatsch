@@ -142,21 +142,32 @@ export function initializeCodeSignals(formatter) {
 }
 
 export const arrowFunctionCode = computed(() => {
-  if (!codeAst.value || !parameters.value.length || !_codeFormatter) return null;
+  if (!codeAst.value || !_codeFormatter || parametersMap.value.size === 0) return null;
   
-  // Create map of all parameters as arrow functions
+  // Create map of all parameters as arrow functions, but only for changed parameters
   const updates = new Map();
-  for (const param of parameters.value) {
-    updates.set(param.index, `() => ${param.key}`);
+  for (const [index, _] of parametersMap.value) {
+    // Find the parameter info from currentParameters
+    const param = currentParameters.value.find(p => p.index === index);
+    if (param) {
+      updates.set(index, `() => ${param.key}`);
+    }
   }
   
   return _codeFormatter.generateCode(codeAst.value, cmCodeRange.value, updates);
 });
 
 export const variableAssignments = computed(() => {
-  if (!parameters.value.length) return '';
-  return parameters.value
-    .map(param => `${param.key} = ${param.value}`)
+  if (parametersMap.value.size === 0) return '';
+  
+  // Only create assignments for changed parameters
+  return Array.from(parametersMap.value.entries())
+    .map(([index, value]) => {
+      const param = currentParameters.value.find(p => p.index === index);
+      if (!param) return null;
+      return `${param.key} = ${value}`;
+    })
+    .filter(Boolean) // Remove null entries
     .join(';\n');
 });
 

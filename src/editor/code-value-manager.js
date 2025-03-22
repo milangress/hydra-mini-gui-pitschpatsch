@@ -43,15 +43,17 @@ export class CodeValueManager {
                 // Update editor with static code
                 this._scheduleEditorUpdate();
             } catch (error) {
+                Logger.log('Failed Arrow Function Code: ', codeToEval.value);
                 Logger.error('Arrow function eval failed:', error);
                 
                 // Fall back to static version
                 try {
-                    if (codeToEval.value) {
-                        Logger.log('Falling back to static code:', codeToEval.value);
-                        this.hydra.eval(codeToEval.value);
+                    if (staticCode.value) {
+                        Logger.log('Falling back to static code:', staticCode.value);
+                        this.hydra.eval(staticCode.value);
                     }
                 } catch (fallbackError) {
+                    Logger.log('Failed Static Code: ', staticCode.value);
                     Logger.error('Static eval failed:', fallbackError);
                 }
             }

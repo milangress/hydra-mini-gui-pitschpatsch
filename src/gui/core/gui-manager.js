@@ -26,7 +26,7 @@ export class GUIManager {
             const positions = currentParameters.value;
             const code = currentCode.value;
             if (positions.length > 0 && code) {
-                console.log('gui-manager effect', positions, code);
+                Logger.log('gui-manager effect', positions, code);
                 this._updateGUI(positions, code);
             }
         });
@@ -34,9 +34,9 @@ export class GUIManager {
         // Add effect for placeholder message
         effect(() => {
             const message = placeholderMessage.value;
-            console.log('gui-manager effect placeholder message', message);
+            Logger.log('gui-manager effect placeholder message', message);
             if (message && this.parametersTab) {
-                console.log('gui-manager effect placeholder message', message);
+                Logger.log('gui-manager effect placeholder message', message);
                 this.tweakpaneAdapter.clearFolder(this.parametersTab);
                 this.tweakpaneAdapter.createMessageBinding(this.parametersTab, message);
             }
@@ -113,7 +113,7 @@ export class GUIManager {
 
         try {
             // Update parameters
-            console.log('parameterManager.updateParameters', this.parametersTab, code, positions);
+            Logger.log('parameterManager.updateParameters', this.parametersTab, code, positions);
             if (code && positions && positions.length > 0) {
             this.parameterManager.updateParameters(
                 this.parametersTab, 
@@ -127,7 +127,7 @@ export class GUIManager {
             
             actions.clearErrors();
         } catch (error) {
-            console.error('gui-manager updateGUI error', error);
+            Logger.error('gui-manager updateGUI error', error);
             actions.setError(error.message);
             this.settingsPage.showError(error.message);
         }

@@ -1,3 +1,5 @@
+import { Logger } from '../../utils/logger.js';
+
 /**
  * Adds dragging functionality to the Tweakpane container
  */
@@ -34,13 +36,13 @@ export class DraggablePane {
         for (const selector of selectors) {
             this.dragBar = this.container.querySelector(selector);
             if (this.dragBar) {
-                console.log('DraggablePane: Found drag handle using selector:', selector);
+                Logger.log('DraggablePane: Found drag handle using selector:', selector);
                 break;
             }
         }
 
         if (!this.dragBar) {
-            console.warn('DraggablePane: Could not find any suitable drag handle. DOM structure:', this.container.innerHTML);
+            Logger.warn('DraggablePane: Could not find any suitable drag handle. DOM structure:', this.container.innerHTML);
             // Try again after a short delay
             setTimeout(() => this.init(), 500);
             return;
@@ -82,7 +84,7 @@ export class DraggablePane {
         this.initialX = rect.left;
         this.initialY = rect.top;
 
-        console.log('DraggablePane: Drag start', {
+        Logger.log('DraggablePane: Drag start', {
             startX: this.startX,
             startY: this.startY,
             initialX: this.initialX,
@@ -127,7 +129,7 @@ export class DraggablePane {
         const finalX = Math.max(0, Math.min(maxX, newX));
         const finalY = Math.max(0, Math.min(maxY, newY));
 
-        console.log('DraggablePane: Dragging', {
+        Logger.log('DraggablePane: Dragging', {
             deltaX,
             deltaY,
             newX: finalX,
@@ -148,7 +150,7 @@ export class DraggablePane {
         // Restore cursor style
         this.dragBar.style.cursor = 'grab';
         
-        console.log('DraggablePane: Drag end', {
+        Logger.log('DraggablePane: Drag end', {
             finalX: this.container.style.left,
             finalY: this.container.style.top
         });
