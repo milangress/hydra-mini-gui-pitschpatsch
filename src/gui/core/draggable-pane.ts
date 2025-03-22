@@ -12,10 +12,12 @@ export class DraggablePane {
     private startY: number;
     private initialX: number;
     private initialY: number;
+    private dragOverlay: HTMLElement | null;
 
     constructor(container: HTMLElement) {
         this.container = container;
         this.dragBar = null;
+        this.dragOverlay = null;
         this.isDragging = false;
         this.startX = 0;
         this.startY = 0;
@@ -61,6 +63,18 @@ export class DraggablePane {
         this.dragBar.style.cursor = 'grab';
         this.dragBar.classList.add('draggable');
         
+        // Create drag overlay
+        this.dragOverlay = document.createElement('div');
+        this.dragOverlay.style.position = 'fixed';
+        this.dragOverlay.style.top = '0';
+        this.dragOverlay.style.left = '0';
+        this.dragOverlay.style.width = '100%';
+        this.dragOverlay.style.height = '100%';
+        this.dragOverlay.style.display = 'none';
+        this.dragOverlay.style.zIndex = '9998'; // Just below the GUI
+        this.dragOverlay.style.cursor = 'grabbing';
+        document.body.appendChild(this.dragOverlay);
+        
         // Add event listeners
         this.dragBar.addEventListener('mousedown', this.onDragStart);
         this.dragBar.addEventListener('touchstart', this.onDragStart, { passive: false });
@@ -71,9 +85,13 @@ export class DraggablePane {
      */
     private onDragStart(e: DragEvent | TouchDragEvent): void {
         e.preventDefault();
+        e.stopPropagation();
         this.isDragging = true;
         
-        if (!this.dragBar) return;
+        if (!this.dragBar || !this.dragOverlay) return;
+        
+        // Show overlay to prevent pointer events
+        this.dragOverlay.style.display = 'block';
         
         // Change cursor style
         this.dragBar.style.cursor = 'grabbing';
@@ -115,6 +133,7 @@ export class DraggablePane {
     private onDrag(e: DragEvent | TouchDragEvent): void {
         if (!this.isDragging) return;
         e.preventDefault();
+        e.stopPropagation();
 
         let currentX: number;
         let currentY: number;
@@ -159,8 +178,11 @@ export class DraggablePane {
      * Handle drag end
      */
     private onDragEnd(): void {
-        if (!this.isDragging || !this.dragBar) return;
+        if (!this.isDragging || !this.dragBar || !this.dragOverlay) return;
         this.isDragging = false;
+        
+        // Hide overlay
+        this.dragOverlay.style.display = 'none';
         
         // Restore cursor style
         this.dragBar.style.cursor = 'grab';
@@ -178,13 +200,17 @@ export class DraggablePane {
     }
 
     /**
-     * Clean up event listeners
+     * Clean up event listeners and DOM elements
      */
     cleanup(): void {
         if (this.dragBar) {
             this.dragBar.removeEventListener('mousedown', this.onDragStart);
             this.dragBar.removeEventListener('touchstart', this.onDragStart);
             this.dragBar.classList.remove('draggable');
+        }
+        if (this.dragOverlay) {
+            this.dragOverlay.remove();
+            this.dragOverlay = null;
         }
         document.removeEventListener('mousemove', this.onDrag);
         document.removeEventListener('touchmove', this.onDrag);
