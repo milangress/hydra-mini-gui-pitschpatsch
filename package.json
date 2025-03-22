@@ -30,7 +30,8 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
     "playwright:install": "playwright install chromium",
-    "pub": "bun run build && bun publish --access public"
+    "pub": "bun run build && bun publish --access public",
+    "typecheck": "bun tsc --noEmit"
   },
   "keywords": [
     "hydra",
@@ -53,6 +54,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
+    "@types/acorn": "^4.0.6",
     "bun-types": "latest",
     "happy-dom": "^17.0.2"
   }
