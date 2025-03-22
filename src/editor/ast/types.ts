@@ -40,7 +40,7 @@ export interface FunctionInfo {
 }
 
 export interface ValueMatch {
-    value: number;
+    value: number | string;
     lineNumber: number;
     ch: number;
     length: number;

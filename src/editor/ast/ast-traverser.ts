@@ -145,9 +145,16 @@ export class ASTTraverser {
                         if (!line?.includes('loadScript') && !line?.includes('await loadScript')) {
                             const lineStart = (node.loc?.start.line ?? 1) - 1;
                             
+                            // Check if this number is part of a UnaryExpression
+                            const parent = state.parents[state.parents.length - 1];
+                            const nodeToUse = parent?.type === 'UnaryExpression' ? parent : node;
+                            
                             // Try to get function name from AST first
-                            let functionInfo = getFunctionName(node, state.parents ?? []);
-                            let paramCount = getParamCount(node, state.parents ?? []);
+                            let functionInfo = getFunctionName(nodeToUse, state.parents ?? []);
+                            let paramCount = getParamCount(nodeToUse, state.parents ?? []);
+
+                            console.log('Function info', functionInfo);
+                            console.log('Param count', paramCount);
 
                             // Fall back to regex if AST method fails
                             if (!functionInfo && line) {
@@ -172,6 +179,7 @@ export class ASTTraverser {
                             if (functionInfo) {
                                 // Get transform info for parameter name
                                 const transform = state.hydra?.generator?.glslTransforms?.[functionInfo.name];
+                                console.log('Hydra transform', transform);
                                 const paramInfo = transform?.inputs?.[paramCount];
                                 const paramName = paramInfo?.name ?? `val${paramCount + 1}`;
                                 const paramType = paramInfo?.type;
@@ -183,13 +191,14 @@ export class ASTTraverser {
                                 let length = (node.loc?.end.column ?? 0) - startColumn;
                                 
                                 // If there's a unary minus before this number
-                                const parent = state.parents[state.parents.length - 1];
                                 if (parent?.type === 'UnaryExpression' && (parent as UnaryExpression).operator === '-') {
                                     value = -value;
                                     startColumn = parent.loc?.start.column ?? 0;
                                     length = (parent.loc?.end.column ?? 0) - startColumn;
                                 }
 
+                                console.log('functioninfo', functionInfo);
+                                
                                 matches.push({
                                     value,
                                     lineNumber: lineStart,
@@ -214,15 +223,76 @@ export class ASTTraverser {
                             }
                         }
                     }
+                    // Handle source/output references
+                    else if (node.type === 'Identifier') {
+                        const name = (node as Identifier).name;
+                        const isOutput = availableOutputs.includes(name);
+                        const isSource = availableSources.includes(name);
+                        
+                        if (isOutput || isSource) {
+                            const lineStart = (node.loc?.start.line ?? 1) - 1;
+                            const line = code.split('\n')[lineStart];
+                            
+                            // Try to get function name from AST first
+                            let functionInfo = getFunctionName(node, state.parents ?? []);
+                            let paramCount = getParamCount(node, state.parents ?? []);
 
-                    // Traverse children
-                    for (const key in node) {
-                        const child = (node as any)[key];
-                        if (child && typeof child === 'object') {
-                            const newParents = [...state.parents, node];
-                            this.go(child, { ...state, parents: newParents });
+                            // Fall back to regex if AST method fails
+                            if (!functionInfo && line) {
+                                const beforeContent = line.substring(0, node.loc?.start.column ?? 0);
+                                const name = extractFunctionNameFromCode(beforeContent);
+                                if (name) {
+                                    functionInfo = {
+                                        name,
+                                        startCh: beforeContent.lastIndexOf(name)
+                                    };
+                                }
+                                if (!paramCount) {
+                                    const lastDotIndex = beforeContent.lastIndexOf('.');
+                                    if (lastDotIndex !== -1) {
+                                        const afterFunction = beforeContent.slice(lastDotIndex + 1);
+                                        paramCount = countParametersBeforePosition(afterFunction);
+                                    }
+                                }
+                            }
+
+                            // Get transform info for parameter name
+                            const transform = state.hydra?.generator?.glslTransforms?.[functionInfo?.name];
+                            const paramInfo = transform?.inputs?.[paramCount];
+                            const paramName = paramInfo?.name ?? `val${paramCount + 1}`;
+                            const paramType = paramInfo?.type;
+                            const paramDefault = paramInfo?.default;
+
+                            matches.push({
+                                value: name,
+                                lineNumber: lineStart,
+                                ch: node.loc?.start.column ?? 0,
+                                length: (node.loc?.end.column ?? 0) - (node.loc?.start.column ?? 0),
+                                index: currentIndex++,
+                                functionName: functionInfo?.name,
+                                functionStartCh: functionInfo?.startCh,
+                                parameterIndex: paramCount,
+                                paramName,
+                                paramType,
+                                paramDefault,
+                                type: isOutput ? 'output' : 'source',
+                                options: isOutput ? availableOutputs : availableSources,
+                                key: generateKey({
+                                    functionName: functionInfo?.name ?? '',
+                                    paramName,
+                                    lineNumber: lineStart,
+                                    ch: node.loc?.start.column ?? 0,
+                                    parameterIndex: paramCount
+                                })
+                            });
                         }
                     }
+
+                    // Traverse children
+                    const oldParents = state.parents || [];
+                    state.parents = [...oldParents, node];
+                    this.super.go.call(this, node, state);
+                    state.parents = oldParents;
                 }
             });
 
