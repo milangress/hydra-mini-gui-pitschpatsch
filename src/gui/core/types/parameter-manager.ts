@@ -1,7 +1,6 @@
-import { TweakpaneAdapter } from '../../adapters/tweakpane-adapter';
-import { TweakpaneFolder } from '../../adapters/types';
-import { BaseControl } from '../controls/base-control';
-import { HydraParameter } from '../../../editor/ast/types';
+import type { BaseControl } from '../controls/base-control';
+import type { HydraParameter } from '../../../editor/ast/types';
+
 
 export interface FunctionGroup {
     displayName: string;

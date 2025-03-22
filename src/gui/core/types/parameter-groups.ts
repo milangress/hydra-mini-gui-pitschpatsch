@@ -1,4 +1,4 @@
-import { HydraParameter } from '../../../editor/ast/types';
+import type { HydraParameter } from '../../../editor/ast/types';
 
 interface BaseParameterGroup {
     params: HydraParameter[];

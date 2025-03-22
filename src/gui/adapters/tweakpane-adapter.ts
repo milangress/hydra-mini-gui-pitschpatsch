@@ -1,5 +1,5 @@
 import { Pane as TweakPane } from 'tweakpane';
-import {
+import type {
     Pane,
     TweakpaneConfig,
     FolderConfig,

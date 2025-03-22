@@ -64,7 +64,9 @@
     </div>
 
     <script type="module">
-        import { allFuncCode, specialCases, defaultCode, makeCodeString } from './hydraCodeString.js';
+        import { getAllCode } from './hydraCodeString.js' with { type: 'macro' };
+
+        [allFuncCode, specialCases, defaultCode] = getAllCode()
         
         // Get the current host for the loadScript URL
         const currentHost = window.location.origin;

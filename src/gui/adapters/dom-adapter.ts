@@ -1,6 +1,6 @@
 import { DEFAULT_GUI_STYLES } from '../core/types/styles';
 import { DraggablePane } from '../core/draggable-pane';
-import { ElementProperties, Layout, CustomStyles } from './dom-types';
+import type { ElementProperties, Layout, CustomStyles } from './dom-types';
 
 /**
  * Handles all DOM-specific operations

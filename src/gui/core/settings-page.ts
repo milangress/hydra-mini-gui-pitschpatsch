@@ -1,9 +1,9 @@
 import { Logger } from '../../utils/logger';
 import { ParameterUtils } from '../utils/parameter-utils';
 import { TweakpaneAdapter } from '../adapters/tweakpane-adapter';
-import { TweakpaneFolder, TweakpaneTab, Pane } from '../adapters/types';
-import { HydraParameter } from '../../editor/ast/types';
-import { HydraInstance, SettingsFolders, SettingsCallbacks } from './types/settings-page';
+import type { TweakpaneTab, Pane } from '../adapters/types';
+import type { HydraParameter } from '../../editor/ast/types';
+import type { HydraInstance, SettingsFolders, SettingsCallbacks } from './types/settings-page';
 
 /**
  * Manages the settings page of the GUI

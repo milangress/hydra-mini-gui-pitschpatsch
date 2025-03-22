@@ -1,8 +1,8 @@
 import { generate, GENERATOR } from 'astring';
-import { Node, CallExpression, MemberExpression, Program, Literal, Identifier } from 'acorn';
+import type { Node, CallExpression, MemberExpression, Program, Literal, Identifier } from 'acorn';
 import { Logger } from '../utils/logger';
-import { HydraInstance } from './ast/types';
-import { CodeStructure, CustomGenerator, FormattingState, CodePosition } from './types';
+import type { HydraInstance } from './ast/types';
+import type { CodeStructure, CustomGenerator, FormattingState, CodePosition } from './types';
 
 /**
  * Handles the formatting and generation of Hydra code while preserving code structure,

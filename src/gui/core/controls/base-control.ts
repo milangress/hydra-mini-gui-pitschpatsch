@@ -1,7 +1,6 @@
-import { Logger } from '../../../utils/logger';
 import { actions } from '../../../state/signals';
-import { ControlConfig, ControlBinding, BaseControlOptions } from '../types/controls';
-import { HydraParameter } from '../../../editor/ast/types';
+import type { ControlConfig, ControlBinding, BaseControlOptions } from '../types/controls';
+import type { HydraParameter } from '../../../editor/ast/types';
 
 /**
  * Base class for all controls
@@ -9,19 +8,22 @@ import { HydraParameter } from '../../../editor/ast/types';
 export class BaseControl {
     protected name: string;
     protected value: any;
-    protected defaultValue: any;
-    protected HydraParameter: HydraParameter;
+    protected originalValue: any;
+    protected HydraParameter?: HydraParameter;
+    protected HydraParameterGroup?: HydraParameter[];
     protected options: BaseControlOptions;
-
+    protected isControlGroup: boolean;
     /**
      * Creates a new control
      */
     constructor(config: ControlConfig) {
         this.name = config.name;
         this.value = config.value;
-        this.defaultValue = config.defaultValue;
-        this.HydraParameter = config.HydraParameter;
+        this.originalValue = config.originalValue;
+        if (config.HydraParameter) this.HydraParameter = config.HydraParameter;
+        if (config.HydraParameterGroup) this.HydraParameterGroup = config.HydraParameterGroup;
         this.options = this._processOptions(config.options || {});
+        this.isControlGroup = !!this.HydraParameterGroup;
     }
 
     /**
@@ -31,6 +33,8 @@ export class BaseControl {
      * @returns The control binding
      */
     createBinding(folder: any, tweakpaneAdapter: any): ControlBinding | ControlBinding[] {
+        if (!this.HydraParameter) throw new Error(`HydraParameter is required for ${this.name}`);
+
         const obj = { [this.name]: this.value };
         const controller = tweakpaneAdapter.createBinding(folder, obj, this.name, this.options);
 
@@ -55,7 +59,7 @@ export class BaseControl {
         return {
             binding: obj,
             controller,
-            originalValue: this.defaultValue,
+            originalValue: this.originalValue,
             parameter: this.HydraParameter
         };
     }

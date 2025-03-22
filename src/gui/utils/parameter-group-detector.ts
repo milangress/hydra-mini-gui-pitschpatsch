@@ -1,5 +1,5 @@
-import { HydraParameter } from '../../editor/ast/types';
-import { ParameterGroup, ColorGroup, PointGroup, NumberGroup } from '../core/types/parameter-groups';
+import type { HydraParameter } from '../../editor/ast/types';
+import type { ParameterGroup, ColorGroup, PointGroup, NumberGroup } from '../core/types/parameter-groups';
 
 /**
  * Pure functions for detecting and grouping related parameters

@@ -16,25 +16,29 @@ const banner = `/*!
 const coolifyUrl = Bun.env.COOLIFY_URL || 'http://localhost:3000';
 const footer = `//# sourceMappingURL=http://${coolifyUrl}/hydra-pitschpatsch.js.map`;
 
+const depoyBuild = {
+    drop: ["console", "debugger", "Logger"],
+    minify: true,
+}
+
 export async function runBuild() {
     try {
 
         const htmlBuild = await Bun.build({
             entrypoints: ["./index.html"],
             outdir: "./dist",
-            naming: {
-                entry: "index.html",
-            },
+            naming: "index.html",
             env: 'inline',
-            sourcemap: "linked",
             minify: false,
+            target: 'browser'
         });
         // Build the JS bundle
         const result = await build({
             entrypoints: ["hydra-pitschpatsch.js"],
             outdir: "./dist",
             sourcemap: "linked",
-            minify: false,
+            
+            target: 'browser',
             define: {
                 // Add package info to the bundle
                 __PKG_VERSION__: JSON.stringify(pkg.version),

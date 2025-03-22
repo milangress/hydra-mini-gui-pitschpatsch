@@ -2,8 +2,8 @@ import { Parser } from 'acorn';
 import { ParameterUtils } from '../utils/parameter-utils';
 import { Logger } from '../../utils/logger';
 import { TweakpaneAdapter } from '../adapters/tweakpane-adapter';
-import { TweakpaneFolder } from '../adapters/types';
-import { HydraParameter } from '../../editor/ast/types';
+import type { TweakpaneFolder } from '../adapters/types';
+import type { HydraParameter } from '../../editor/ast/types';
 import { ParameterGroupDetector } from '../utils/parameter-group-detector';
 import { NumberControl } from './controls/number-control';
 import { ColorControl } from './controls/color-control';
@@ -92,9 +92,9 @@ export class ParameterManager {
                         label: group.metadata.label ?? group.params[0].paramName,
                         type: 'float'
                     },
-                    params: group.params as HydraParameter[],
+                    HydraParameterGroup: group.params as HydraParameter[],
                     value: undefined,
-                    defaultValue: undefined
+                    originalValue: undefined
                 }).createBinding(folder, tweakpaneAdapter);
             } else if (group.type === 'point') {
                 new PointControl({
@@ -103,9 +103,9 @@ export class ParameterManager {
                         label: group.metadata.label ?? group.params[0].paramName,
                         mode: 'normal'
                     },
-                    params: group.params,
+                    HydraParameterGroup: group.params as HydraParameter[],
                     value: undefined,
-                    defaultValue: undefined
+                    originalValue: undefined
                 }).createBinding(folder, tweakpaneAdapter);
             } else {
                 // Single number control
@@ -114,7 +114,7 @@ export class ParameterManager {
                     name: param.paramName,
                     options: { label: param.paramName },
                     value: param.value,
-                    defaultValue: param.paramDefault,
+                    originalValue: param.paramDefault,
                     HydraParameter: param as HydraParameter
                 }).createBinding(folder, tweakpaneAdapter);
             }

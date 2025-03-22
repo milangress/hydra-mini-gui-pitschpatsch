@@ -1,18 +1,12 @@
 import { BaseControl } from './base-control';
 import { Logger } from '../../../utils/logger';
-import { ControlConfig, ControlBinding, NumberControlOptions } from '../types/controls';
-import { HydraParameter } from '../../../editor/ast/types';
+import type { ControlConfig, ControlBinding, NumberControlOptions } from '../types/controls';
+import type { HydraParameter } from '../../../editor/ast/types';
 
 /**
  * Control for numeric values and option selections
  */
 export class NumberControl extends BaseControl {
-    /**
-     * Creates a new number control
-     */
-    constructor(config: ControlConfig) {
-        super(config);
-    }
 
     /**
      * Process control options
@@ -45,6 +39,8 @@ export class NumberControl extends BaseControl {
      * @returns The control binding
      */
     createBinding(folder: any, tweakpaneAdapter: any): ControlBinding {
+        if (!this.HydraParameter) throw new Error(`HydraParameter is required for ${this.name}`);
+        
         Logger.log('NumberControl createBinding - parameter before:', this.HydraParameter);
         const binding = super.createBinding(folder, tweakpaneAdapter);
         

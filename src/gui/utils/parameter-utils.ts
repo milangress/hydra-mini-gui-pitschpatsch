@@ -1,4 +1,4 @@
-import { HydraParameter } from '../../editor/ast/types';
+import { type HydraParameter } from '../../editor/ast/types';
 import { BaseControl } from '../core/controls/base-control';
 
 interface FunctionGroup {
@@ -55,9 +55,7 @@ export class ParameterUtils {
             if (!filterFn(HydraParameter)) return;
 
             const functionId = HydraParameter.functionId
-            const position = 'functionStartCh' in HydraParameter 
-                ? HydraParameter.functionStartCh 
-                : HydraParameter.ch;
+            const position = HydraParameter.functionStartCh 
                 
             if (!functionGroups.has(functionId)) {
                 functionGroups.set(functionId, {

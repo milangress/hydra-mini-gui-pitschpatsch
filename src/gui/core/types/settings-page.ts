@@ -1,5 +1,4 @@
-import { TweakpaneAdapter } from '../../adapters/tweakpane-adapter';
-import { TweakpaneFolder, TweakpaneTab } from '../../adapters/types';
+import type { TweakpaneFolder } from '../../adapters/types';
 
 export interface HydraSynth {
     stats: {

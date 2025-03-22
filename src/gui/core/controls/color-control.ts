@@ -1,7 +1,7 @@
 import { BaseControl } from './base-control';
 import { actions } from '../../../state/signals';
-import { ControlConfig, ControlBinding, ColorControlOptions} from '../types/controls';
-import { HydraParameter } from '../../../editor/ast/types';
+import type { ControlConfig, ControlBinding, ColorControlOptions} from '../types/controls';
+import type { HydraParameter } from '../../../editor/ast/types';
 interface ColorValues {
     r: number;
     g: number;
@@ -12,19 +12,17 @@ interface ColorValues {
  * Control for RGB color values
  */
 export class ColorControl extends BaseControl {
-    private params: HydraParameter[];
     private originalValues: ColorValues;
-
     /**
      * Creates a new color control
      */
-    constructor(config: ControlConfig & { params: HydraParameter[] }) {
+    constructor(config: ControlConfig & { HydraParameterGroup: HydraParameter[] }) {
         super(config);
-        this.params = config.params;
+        this.HydraParameterGroup = config.HydraParameterGroup;
         this.originalValues = {
-            r: this.params.find(p => p.paramName === 'r')?.value ?? 0,
-            g: this.params.find(p => p.paramName === 'g')?.value ?? 0,
-            b: this.params.find(p => p.paramName === 'b')?.value ?? 0
+            r: this.HydraParameterGroup.find(p => p.paramName === 'r')?.value ?? 0,
+            g: this.HydraParameterGroup.find(p => p.paramName === 'g')?.value ?? 0,
+            b: this.HydraParameterGroup.find(p => p.paramName === 'b')?.value ?? 0
         };
     }
 
@@ -47,6 +45,7 @@ export class ColorControl extends BaseControl {
      * @returns The control binding
      */
     createBinding(folder: any, tweakpaneAdapter: any): ControlBinding[] {
+        if (!this.HydraParameterGroup) throw new Error(`HydraParameterGroup is required for ${this.name}`);
         const obj = { 
             color: {
                 r: this.originalValues.r,
@@ -61,18 +60,18 @@ export class ColorControl extends BaseControl {
         });
 
         // Store parameter objects by their component name
-        const paramsByComponent: Record<string, HydraParameter | undefined> = {
-            r: this.params.find(p => p.paramName === 'r'),
-            g: this.params.find(p => p.paramName === 'g'),
-            b: this.params.find(p => p.paramName === 'b')
+        const paramsByComponent: Record<string, HydraParameter> = {
+            r: this.HydraParameterGroup.find(p => p.paramName === 'r') as HydraParameter,
+            g: this.HydraParameterGroup.find(p => p.paramName === 'g') as HydraParameter,
+            b: this.HydraParameterGroup.find(p => p.paramName === 'b') as HydraParameter
         };
 
         controller.on('change', (event: { value: ColorValues }) => {
             const { r, g, b } = event.value;
             // Update each component using its parameter's key
-            if (paramsByComponent.r?.key) actions.updateParameterValueByKey(paramsByComponent.r.key, r);
-            if (paramsByComponent.g?.key) actions.updateParameterValueByKey(paramsByComponent.g.key, g);
-            if (paramsByComponent.b?.key) actions.updateParameterValueByKey(paramsByComponent.b.key, b);
+            if (paramsByComponent.r.key) actions.updateParameterValueByKey(paramsByComponent.r.key, r);
+            if (paramsByComponent.g.key) actions.updateParameterValueByKey(paramsByComponent.g.key, g);
+            if (paramsByComponent.b.key) actions.updateParameterValueByKey(paramsByComponent.b.key, b);
         });
 
         if (controller.element) {
@@ -104,8 +103,8 @@ export class ColorControl extends BaseControl {
      * Checks if this control can handle the parameter
      * @param param - The parameter to check
      */
-    static canHandle(param: HydraParameter): boolean {
-        return param.paramType === 'color' || 
-               (param.paramName && ['r', 'g', 'b'].includes(param.paramName.toLowerCase()));
+    static canHandle(HydraParameter: HydraParameter): boolean {
+        return HydraParameter.paramType === 'color' || 
+               !!(HydraParameter.paramName && ['r', 'g', 'b'].includes(HydraParameter.paramName.toLowerCase()));
     }
 } 

@@ -5,10 +5,9 @@ import { SettingsPage } from './settings-page';
 import { Logger } from '../../utils/logger';
 import { effect } from '@preact/signals-core';
 import { layout, actions, currentCode, currentParameters, placeholderMessage } from '../../state/signals';
-import { HydraInstance } from '../../editor/ast/types';
-import { HydraParameter } from '../../editor/ast/types';
-import { TweakpaneFolder, TweakpaneConfig, TweakpaneTab } from '../adapters/types';
-import { Layout } from '../adapters/dom-types';
+import type { HydraInstance, HydraParameter } from '../../editor/ast/types';
+import type { TweakpaneFolder, TweakpaneConfig, TweakpaneTab } from '../adapters/types';
+import type { Layout } from '../adapters/dom-types';
 
 /**
  * Manages the GUI components

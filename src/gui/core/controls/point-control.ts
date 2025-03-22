@@ -1,8 +1,7 @@
 import { BaseControl } from './base-control';
-import { Logger } from '../../../utils/logger';
 import { actions } from '../../../state/signals';
-import { ControlConfig, ControlBinding, PointControlOptions } from '../types/controls';
-import { HydraParameter } from '../../../editor/ast/types';
+import type { ControlConfig, ControlBinding, PointControlOptions } from '../types/controls';
+import type { HydraParameter } from '../../../editor/ast/types';
 
 interface PointMapping {
     mode: 'centered' | 'extended' | 'normal';
@@ -24,23 +23,29 @@ interface PointValue {
  * Supports different mapping modes based on parameter defaults
  */
 export class PointControl extends BaseControl {
-    private params: HydraParameter[];
     private mapping: PointMapping;
+    private originalValues: PointValue;
 
-
-    /**
+    constructor(config: ControlConfig & { HydraParameterGroup: HydraParameter[] }) {
+        super(config);
+        this.HydraParameterGroup = config.HydraParameterGroup;
+        this.originalValues = {
+            x: this.HydraParameterGroup.find(p => p.paramName.toLowerCase().endsWith('x'))?.value ?? 0,
+            y: this.HydraParameterGroup.find(p => p.paramName.toLowerCase().endsWith('y'))?.value ?? 0
+        };
+        this.mapping = this._determineMapping((this.originalValues.x + this.originalValues.y) / 2);
+    }    /**
      * Process control options
      * @protected
      */
     protected _processOptions(options: PointControlOptions): PointControlOptions {
         const baseOptions = super._processOptions(options) as PointControlOptions;
-        const mapping = this._determineMapping(this.defaultValue);
 
         return {
             ...baseOptions,
-            mode: mapping.mode,
-            x: mapping.config.x,
-            y: mapping.config.y
+            mode: this.mapping.mode,
+            x: this.mapping.config.x,
+            y: this.mapping.config.y
         };
     }
 
@@ -89,7 +94,9 @@ export class PointControl extends BaseControl {
      * @returns The control binding
      */
     createBinding(folder: any, tweakpaneAdapter: any): ControlBinding[] {
-        const displayValue = this.mapping.toDisplay(this.params[0].value);
+        if (!this.HydraParameterGroup) throw new Error(`HydraParameterGroup is required for ${this.name}`);
+
+        const displayValue = this.mapping.toDisplay(this.HydraParameterGroup[0].value);
         const obj = { point: { x: displayValue, y: displayValue } };
         
         const controller = tweakpaneAdapter.createBinding(folder, obj, 'point', {
@@ -99,9 +106,9 @@ export class PointControl extends BaseControl {
         });
 
         // Store parameter objects by their component
-        const paramsByComponent: Record<string, HydraParameter | undefined> = {
-            x: this.params.find(p => p.paramName.toLowerCase().endsWith('x')),
-            y: this.params.find(p => p.paramName.toLowerCase().endsWith('y'))
+        const paramsByComponent: Record<string, HydraParameter> = {
+            x: this.HydraParameterGroup.find(p => p.paramName.toLowerCase().endsWith('x')) as HydraParameter,
+            y: this.HydraParameterGroup.find(p => p.paramName.toLowerCase().endsWith('y')) as HydraParameter
         };
 
         controller.on('change', (event: { value: PointValue }) => {
@@ -109,8 +116,8 @@ export class PointControl extends BaseControl {
             const hydraX = this.mapping.fromDisplay(x);
             const hydraY = this.mapping.fromDisplay(y);
             // Update each component using its parameter's key
-            if (paramsByComponent.x?.key) actions.updateParameterValueByKey(paramsByComponent.x.key, hydraX);
-            if (paramsByComponent.y?.key) actions.updateParameterValueByKey(paramsByComponent.y.key, hydraY);
+            actions.updateParameterValueByKey(paramsByComponent.x.key, hydraX);
+            actions.updateParameterValueByKey(paramsByComponent.y.key, hydraY);
         });
 
         if (controller.element) {
@@ -125,7 +132,7 @@ export class PointControl extends BaseControl {
             {
                 binding: obj,
                 controller,
-                originalValue: this.params[0].value,
+                originalValue: paramsByComponent.x.value,
                 isPoint: true,
                 pointKey: 'point',
                 pointComponent: 'x',
@@ -135,7 +142,7 @@ export class PointControl extends BaseControl {
             {
                 binding: obj,
                 controller,
-                originalValue: this.params[0].value,
+                originalValue: paramsByComponent.y.value,
                 isPoint: true,
                 pointKey: 'point',
                 pointComponent: 'y',
@@ -158,7 +165,7 @@ export class PointControl extends BaseControl {
      */
     static canHandle(HydraParameter: HydraParameter): boolean {
         return HydraParameter.paramType === 'point' || 
-               (HydraParameter.paramName && (HydraParameter.paramName.endsWith('X') || HydraParameter.paramName.endsWith('Y') ||
+               !!(HydraParameter.paramName && (HydraParameter.paramName.endsWith('X') || HydraParameter.paramName.endsWith('Y') ||
                HydraParameter.paramName.endsWith('x') || HydraParameter.paramName.endsWith('y')));
     }
 } 

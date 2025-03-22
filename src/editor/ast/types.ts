@@ -1,4 +1,4 @@
-import { Node, CallExpression, Identifier, MemberExpression, Literal, UnaryExpression } from 'acorn';
+import type { Node } from 'acorn';
 
 export interface HydraTransformInput {
     name?: string;

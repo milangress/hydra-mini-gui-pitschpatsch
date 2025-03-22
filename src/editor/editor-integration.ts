@@ -1,6 +1,6 @@
 import { Logger } from '../utils/logger';
 import { actions, currentEvalRange } from '../state/signals';
-import { CodeMirrorPosition, CodeMirrorRange, CodeBlock, EvalAction } from './types';
+import type { CodeMirrorPosition, CodeMirrorRange, CodeBlock, EvalAction } from './types';
 import { CodeValueManager } from './code-value-manager';
 
 export const hookIntoEval = (): void => {

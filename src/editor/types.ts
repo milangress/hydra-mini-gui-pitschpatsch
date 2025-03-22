@@ -1,4 +1,4 @@
-import { Generator, State } from 'astring';
+import type { Generator, State } from 'astring';
 
 export interface CodePosition {
     value: number | string;

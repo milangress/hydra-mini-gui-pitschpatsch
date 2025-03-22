@@ -13,7 +13,7 @@ import {
     staticCode,
     parametersMap
 } from '../state/signals';
-import { HydraInstance, HydraParameter } from './ast/types';
+import type { HydraInstance, HydraParameter } from './ast/types';
 import { ParameterUpdateDebouncer } from '../gui/utils/parameter-debouncer';
 
 interface UndoGroup {

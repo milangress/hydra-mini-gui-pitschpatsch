@@ -1,9 +1,9 @@
 import { signal, computed, effect, Signal } from '@preact/signals-core';
 import { Logger } from '../utils/logger';
 import { Parser } from 'acorn';
-import { HydraParameter } from '../editor/ast/types';
+import { type HydraParameter } from '../editor/ast/types';
 import { CodeFormatter } from '../editor/code-formatter';
-import { CodeMirrorRange } from '../editor/types';
+import { type CodeMirrorRange } from '../editor/types';
 
 /**
  * Central state management for Hydra Mini GUI using signals

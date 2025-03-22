@@ -1,5 +1,5 @@
 import { Logger } from '../../utils/logger';
-import { DragEvent, TouchDragEvent, DragState } from './types/draggable-pane';
+import type { DragEvent, TouchDragEvent } from './types/draggable-pane';
 
 /**
  * Adds dragging functionality to the Tweakpane container
