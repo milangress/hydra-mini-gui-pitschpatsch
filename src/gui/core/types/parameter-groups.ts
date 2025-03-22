@@ -1,7 +1,7 @@
-import { ControlParameter } from './controls';
+import { HydraParameter } from '../../../editor/ast/types';
 
 interface BaseParameterGroup {
-    params: ControlParameter[];
+    params: HydraParameter[];
     metadata: {
         label?: string;
         pattern?: string;

@@ -1,7 +1,7 @@
 import { signal, computed, effect, Signal } from '@preact/signals-core';
 import { Logger } from '../utils/logger';
 import { Parser } from 'acorn';
-import { ValueMatch } from '../editor/ast/types';
+import { HydraParameter } from '../editor/ast/types';
 import { CodeFormatter } from '../editor/code-formatter';
 import { CodeMirrorRange } from '../editor/types';
 
@@ -26,11 +26,11 @@ interface Layout {
 export const currentCode = signal<string | null>(null);
 export const currentEvalCode = signal<string | null>(null);
 export const currentEvalRange = signal<CodeMirrorRange | null>(null);
-export const currentParameters = signal<ValueMatch[]>([]);
+export const currentParameters = signal<HydraParameter[]>([]);
 
 // New parameters
 export const parametersMap = signal<Map<number, number | string>>(new Map());
-export const parameters = computed(() => {
+export const parameters = computed<HydraParameter[]>(() => {
     const params = currentParameters.value.map(param => ({
         ...param,
         value: parametersMap.value.get(param.index) ?? param.value
@@ -113,7 +113,7 @@ function updateParameterValue(identifier: string | number, value: number | strin
  * Action creators - these replace the old dispatch actions
  */
 export const actions = {
-    currentParameters: (parameters: ValueMatch[]) => {
+    currentParameters: (parameters: HydraParameter[]) => {
         Logger.log('actions.currentParameters', parameters);
         currentParameters.value = parameters;
     },

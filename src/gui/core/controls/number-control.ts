@@ -1,7 +1,7 @@
 import { BaseControl } from './base-control';
 import { Logger } from '../../../utils/logger';
-import { actions } from '../../../state/signals';
-import { ControlConfig, ControlBinding, ControlParameter, NumberControlOptions } from '../types/controls';
+import { ControlConfig, ControlBinding, NumberControlOptions } from '../types/controls';
+import { HydraParameter } from '../../../editor/ast/types';
 
 /**
  * Control for numeric values and option selections
@@ -45,7 +45,7 @@ export class NumberControl extends BaseControl {
      * @returns The control binding
      */
     createBinding(folder: any, tweakpaneAdapter: any): ControlBinding {
-        Logger.log('NumberControl createBinding - parameter before:', this.parameter);
+        Logger.log('NumberControl createBinding - parameter before:', this.HydraParameter);
         const binding = super.createBinding(folder, tweakpaneAdapter);
         
         // Ensure we're working with a single binding, not an array
@@ -54,11 +54,11 @@ export class NumberControl extends BaseControl {
         }
         
         // Use the parameter key for data attributes
-        if (binding.controller?.element && this.parameter?.key) {
-            binding.controller.element.setAttribute('data-hydra-param', this.parameter.key);
+        if (binding.controller.element && this.HydraParameter.key) {
+            binding.controller.element.setAttribute('data-hydra-param', this.HydraParameter.key);
             const input = binding.controller.element.querySelector('input');
             if (input) {
-                input.setAttribute('data-hydra-input', this.parameter.key);
+                input.setAttribute('data-hydra-input', this.HydraParameter.key);
             }
         }
         
@@ -76,10 +76,10 @@ export class NumberControl extends BaseControl {
      * Checks if this control can handle the parameter
      * @param param - The parameter to check
      */
-    static canHandle(param: ControlParameter): boolean {
-        Logger.log('NumberControl checking if can handle:', param.paramType);
-        return param.paramType === 'float' || 
-               param.paramType === 'number' || 
-               param.paramType === 'select';
+    static canHandle(HydraParameter: HydraParameter): boolean {
+        Logger.log('NumberControl checking if can handle:', HydraParameter.paramType);
+        return HydraParameter.paramType === 'float' || 
+        HydraParameter.paramType === 'number' || 
+        HydraParameter.paramType === 'select';
     }
 } 

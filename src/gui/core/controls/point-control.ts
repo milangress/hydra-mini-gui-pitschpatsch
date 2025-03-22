@@ -1,7 +1,8 @@
 import { BaseControl } from './base-control';
 import { Logger } from '../../../utils/logger';
 import { actions } from '../../../state/signals';
-import { ControlConfig, ControlBinding, ControlParameter, PointControlOptions } from '../types/controls';
+import { ControlConfig, ControlBinding, PointControlOptions } from '../types/controls';
+import { HydraParameter } from '../../../editor/ast/types';
 
 interface PointMapping {
     mode: 'centered' | 'extended' | 'normal';
@@ -23,18 +24,9 @@ interface PointValue {
  * Supports different mapping modes based on parameter defaults
  */
 export class PointControl extends BaseControl {
-    private params: ControlParameter[];
+    private params: HydraParameter[];
     private mapping: PointMapping;
 
-    /**
-     * Creates a new point control
-     */
-    constructor(config: ControlConfig & { params: ControlParameter[] }) {
-        super(config);
-        this.params = config.params;
-        // Use first param's value for mapping
-        this.mapping = this._determineMapping(this.params[0].value);
-    }
 
     /**
      * Process control options
@@ -107,7 +99,7 @@ export class PointControl extends BaseControl {
         });
 
         // Store parameter objects by their component
-        const paramsByComponent: Record<string, ControlParameter | undefined> = {
+        const paramsByComponent: Record<string, HydraParameter | undefined> = {
             x: this.params.find(p => p.paramName.toLowerCase().endsWith('x')),
             y: this.params.find(p => p.paramName.toLowerCase().endsWith('y'))
         };
@@ -164,9 +156,9 @@ export class PointControl extends BaseControl {
      * Checks if this control can handle the parameter
      * @param param - The parameter to check
      */
-    static canHandle(param: ControlParameter): boolean {
-        return param.paramType === 'point' || 
-               (param.paramName && (param.paramName.endsWith('X') || param.paramName.endsWith('Y') ||
-                                  param.paramName.endsWith('x') || param.paramName.endsWith('y')));
+    static canHandle(HydraParameter: HydraParameter): boolean {
+        return HydraParameter.paramType === 'point' || 
+               (HydraParameter.paramName && (HydraParameter.paramName.endsWith('X') || HydraParameter.paramName.endsWith('Y') ||
+               HydraParameter.paramName.endsWith('x') || HydraParameter.paramName.endsWith('y')));
     }
 } 

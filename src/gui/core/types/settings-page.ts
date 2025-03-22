@@ -1,6 +1,5 @@
 import { TweakpaneAdapter } from '../../adapters/tweakpane-adapter';
 import { TweakpaneFolder, TweakpaneTab } from '../../adapters/types';
-import { ValuePosition } from '../../../editor/ast/types';
 
 export interface HydraSynth {
     stats: {

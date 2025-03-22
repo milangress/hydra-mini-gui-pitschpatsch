@@ -13,8 +13,7 @@ import {
     staticCode,
     parametersMap
 } from '../state/signals';
-import { HydraInstance } from './ast/types';
-import { ValueMatch } from './ast/types';
+import { HydraInstance, HydraParameter } from './ast/types';
 import { ParameterUpdateDebouncer } from '../gui/utils/parameter-debouncer';
 
 interface UndoGroup {
@@ -39,7 +38,9 @@ export class CodeValueManager {
     get isUpdating(): boolean {
         return this._isUpdating;
     }
-
+    get codeFormatter(): CodeFormatter {
+        return this._codeFormatter;
+    }
     /**
      * Creates a new CodeValueManager instance
      * @param hydra - The Hydra instance to use for value management
@@ -131,7 +132,7 @@ export class CodeValueManager {
      * @param code - The code to analyze
      * @returns Found values with their metadata
      */
-    findValues(code: string | null): ValueMatch[] {
+    findValues(code: string | null): HydraParameter[] {
         if (!code) return [];
 
         try {

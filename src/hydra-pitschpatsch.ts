@@ -1,7 +1,7 @@
 // hydra-mini-gui.js
 // A plugin for Hydra that creates a GUI for controlling numeric values
 
-import { getHydra, waitForGUI } from './utils/hydra-utils';
+import { getHydra } from './utils/hydra-utils';
 import { hookIntoEval, hookIntoHydraEditor } from './editor/editor-integration';
 import { GUIManager } from './gui/core/gui-manager';
 import { CodeValueManager } from './editor/code-value-manager';
@@ -29,7 +29,7 @@ export class HydraMiniGUI {
         this.codeManager = new CodeValueManager(this.hydra);
         
         // Initialize code signals with the formatter from codeManager
-        initializeCodeSignals(this.codeManager._codeFormatter);
+        initializeCodeSignals(this.codeManager.codeFormatter);
         
         // Setup the GUI
         this.guiManager.setupGUI();

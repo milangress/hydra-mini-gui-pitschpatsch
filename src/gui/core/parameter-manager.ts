@@ -3,13 +3,11 @@ import { ParameterUtils } from '../utils/parameter-utils';
 import { Logger } from '../../utils/logger';
 import { TweakpaneAdapter } from '../adapters/tweakpane-adapter';
 import { TweakpaneFolder } from '../adapters/types';
-import { ValuePosition, ValueMatch } from '../../editor/ast/types';
-import { actions } from '../../state/signals';
+import { HydraParameter } from '../../editor/ast/types';
 import { ParameterGroupDetector } from '../utils/parameter-group-detector';
 import { NumberControl } from './controls/number-control';
 import { ColorControl } from './controls/color-control';
 import { PointControl } from './controls/point-control';
-import { ControlParameter } from './types/controls';
 
 /**
  * Manages parameter organization and GUI updates
@@ -24,8 +22,8 @@ export class ParameterManager {
     /**
      * Updates the GUI with new parameter values
      */
-    updateParameters(folder: TweakpaneFolder, currentCode: string | null, valuePositions: ValuePosition[]): void {
-        if (valuePositions && valuePositions.length === 0) {
+    updateParameters(folder: TweakpaneFolder, currentCode: string | null, HydraParameter: HydraParameter[]): void {
+        if (HydraParameter && HydraParameter.length === 0) {
             // Check for syntax errors if we have code but no values
             if (currentCode) {
                 try {
@@ -38,10 +36,10 @@ export class ParameterManager {
             return;
         }
 
-        Logger.log('Value positions:', valuePositions);
+        Logger.log('HydraParameter:', HydraParameter);
 
         // Group values by their function and line number
-        const functionGroups = ParameterUtils.groupByFunction(valuePositions);
+        const functionGroups = ParameterUtils.groupByFunction(HydraParameter);
         
         // Sort groups and count instances
         const sortedGroups = ParameterUtils.sortAndCountInstances(functionGroups);
@@ -69,26 +67,6 @@ export class ParameterManager {
         }
     }
 
-    /**
-     * Updates a specific parameter value
-     */
-    updateControlValue(controlName: string, newValue: unknown): void {
-        actions.updateParameterValueByKey(controlName, newValue as number | string);
-    }
-
-    /**
-     * Resets all parameter values
-     */
-    resetAllValues(): void {
-        actions.updateSettings({ isReset: true });
-    }
-
-    /**
-     * Resets a specific parameter to its original value
-     */
-    revertValue(key: string, originalValue: unknown): void {
-        actions.updateParameterValueByKey(key, originalValue as number | string);
-    }
 
     /**
      * Cleans up resources
@@ -99,10 +77,10 @@ export class ParameterManager {
 
     createControls(
         folder: TweakpaneFolder, 
-        params: ControlParameter[],
+        HydraParameter: HydraParameter[],
         tweakpaneAdapter: TweakpaneAdapter
     ): void {
-        const groups = ParameterGroupDetector.detectGroups(params);
+        const groups = ParameterGroupDetector.detectGroups(HydraParameter);
 
         groups.forEach(group => {
             Logger.log('ControlFactory creating control for group:', group);
@@ -114,7 +92,7 @@ export class ParameterManager {
                         label: group.metadata.label ?? group.params[0].paramName,
                         type: 'float'
                     },
-                    params: group.params,
+                    params: group.params as HydraParameter[],
                     value: undefined,
                     defaultValue: undefined
                 }).createBinding(folder, tweakpaneAdapter);
@@ -137,7 +115,7 @@ export class ParameterManager {
                     options: { label: param.paramName },
                     value: param.value,
                     defaultValue: param.paramDefault,
-                    parameter: param
+                    HydraParameter: param as HydraParameter
                 }).createBinding(folder, tweakpaneAdapter);
             }
         });

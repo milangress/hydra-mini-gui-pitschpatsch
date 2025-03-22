@@ -1,7 +1,7 @@
 import { makeTraveler } from 'astravel';
 import { Node, CallExpression, Identifier, MemberExpression, Literal, UnaryExpression } from 'acorn';
 import { extractFunctionNameFromCode, countParametersBeforePosition } from '../../utils/code-utils';
-import { HydraInstance, FunctionInfo, ValuePosition, ValueMatch, TraversalState } from './types';
+import { HydraInstance, FunctionInfo, HydraParameter, TraversalState } from './types';
 
 /**
  * Traverses Abstract Syntax Trees (AST) of Hydra code to analyze and extract information
@@ -101,12 +101,19 @@ export class ASTTraverser {
      * - osc(10, 0.5) -> osc_freq_line1_pos3_value, osc_sync_line1_pos7_value
      * - osc(10).rotate(6.22) -> osc_freq_line1_pos3_value, rotate_angle_line1_pos12_value
      */
-    private _generateKey(valuePosition: ValuePosition): string {
-        const paramPart = valuePosition.paramName ? 
-            `_${valuePosition.paramName}` : 
-            `_param${valuePosition.parameterIndex}`;
+    private _generateKey(HydraParameter: HydraParameter): string {
+        const paramPart = HydraParameter.paramName ? 
+            `_${HydraParameter.paramName}` : 
+            `_param${HydraParameter.parameterIndex}`;
             
-        return `${valuePosition.functionName}${paramPart}_line${valuePosition.lineNumber}_pos${valuePosition.ch}_value`;
+        return `${HydraParameter.functionName}${paramPart}_line${HydraParameter.lineNumber}_pos${HydraParameter.ch}_value`;
+    }
+
+    private _generateFunctionId(HydraParameter: HydraParameter): string {
+        const position = 'functionStartCh' in HydraParameter 
+            ? HydraParameter.functionStartCh 
+            : HydraParameter.ch;
+        return `${HydraParameter.functionName}_line${HydraParameter.lineNumber}_pos${position}`;
     }
 
     /**
@@ -117,10 +124,10 @@ export class ASTTraverser {
      * - Containing function and parameter information
      * - Parameter metadata from Hydra transform definitions
      */
-    findValues(ast: Node | null, code: string | null): ValueMatch[] {
+    findValues(ast: Node | null, code: string | null): HydraParameter[] {
         if (!ast || !code) return [];
 
-        const matches: ValueMatch[] = [];
+        const matches: HydraParameter[] = [];
         let currentIndex = 0;
 
         try {
@@ -133,7 +140,7 @@ export class ASTTraverser {
             const getParamCount = this._getParameterCount.bind(this);
             const generateKey = this._generateKey.bind(this);
             const hydra = this.hydra;
-
+            const generateFunctionId = this._generateFunctionId.bind(this);
             const traveler = makeTraveler({
                 go: function(node: Node, state: TraversalState) {
                     if (!node || typeof node !== 'object') return;
@@ -207,10 +214,12 @@ export class ASTTraverser {
                                     index: currentIndex++,
                                     functionName: functionInfo.name,
                                     functionStartCh: functionInfo.startCh,
+                                    functionId: generateFunctionId(functionInfo),
                                     parameterIndex: paramCount,
                                     paramName,
                                     paramType,
                                     paramDefault,
+                                    paramCount,
                                     type: 'number',
                                     key: generateKey({
                                         functionName: functionInfo.name,
@@ -271,10 +280,12 @@ export class ASTTraverser {
                                 index: currentIndex++,
                                 functionName: functionInfo?.name,
                                 functionStartCh: functionInfo?.startCh,
+                                functionId: generateFunctionId(functionInfo),
                                 parameterIndex: paramCount,
                                 paramName,
                                 paramType,
                                 paramDefault,
+                                paramCount,
                                 type: isOutput ? 'output' : 'source',
                                 options: isOutput ? availableOutputs : availableSources,
                                 key: generateKey({

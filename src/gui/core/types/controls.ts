@@ -1,9 +1,12 @@
+import { HydraParameter } from '../../../editor/ast/types';
+
 export interface ControlConfig {
     name: string;
     value: any;
     defaultValue: any;
     options: ControlOptions;
-    parameter?: ControlParameter;
+    HydraParameter?: HydraParameter;
+    params?: HydraParameter[];
 }
 
 export interface BaseControlOptions {
@@ -53,16 +56,6 @@ export interface ControlBinding {
     pointKey?: string;
     pointComponent?: 'x' | 'y';
     mapPoint?: boolean;
-    parameter?: ControlParameter;
+    parameter?: HydraParameter;
 }
 
-export interface ControlParameter {
-    functionName: string;
-    paramName: string;
-    paramType: string;
-    value: any;
-    paramDefault: any;
-    index: number;
-    parameterIndex: number;
-    key: string;
-} 

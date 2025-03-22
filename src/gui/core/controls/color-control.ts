@@ -1,8 +1,7 @@
 import { BaseControl } from './base-control';
-import { Logger } from '../../../utils/logger';
 import { actions } from '../../../state/signals';
-import { ControlConfig, ControlBinding, ControlParameter, ColorControlOptions } from '../types/controls';
-
+import { ControlConfig, ControlBinding, ColorControlOptions} from '../types/controls';
+import { HydraParameter } from '../../../editor/ast/types';
 interface ColorValues {
     r: number;
     g: number;
@@ -13,13 +12,13 @@ interface ColorValues {
  * Control for RGB color values
  */
 export class ColorControl extends BaseControl {
-    private params: ControlParameter[];
+    private params: HydraParameter[];
     private originalValues: ColorValues;
 
     /**
      * Creates a new color control
      */
-    constructor(config: ControlConfig & { params: ControlParameter[] }) {
+    constructor(config: ControlConfig & { params: HydraParameter[] }) {
         super(config);
         this.params = config.params;
         this.originalValues = {
@@ -58,11 +57,11 @@ export class ColorControl extends BaseControl {
         
         const controller = tweakpaneAdapter.createBinding(folder, obj, 'color', {
             label: this.options.label,
-            color: { type: (this.options as ColorControlOptions).type ?? 'float' }
+            color: { type: (this.options as HydraParameter).type ?? 'float' }
         });
 
         // Store parameter objects by their component name
-        const paramsByComponent: Record<string, ControlParameter | undefined> = {
+        const paramsByComponent: Record<string, HydraParameter | undefined> = {
             r: this.params.find(p => p.paramName === 'r'),
             g: this.params.find(p => p.paramName === 'g'),
             b: this.params.find(p => p.paramName === 'b')
@@ -105,7 +104,7 @@ export class ColorControl extends BaseControl {
      * Checks if this control can handle the parameter
      * @param param - The parameter to check
      */
-    static canHandle(param: ControlParameter): boolean {
+    static canHandle(param: HydraParameter): boolean {
         return param.paramType === 'color' || 
                (param.paramName && ['r', 'g', 'b'].includes(param.paramName.toLowerCase()));
     }

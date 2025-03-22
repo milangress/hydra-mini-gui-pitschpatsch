@@ -1,15 +1,11 @@
-import { ValuePosition, ValueMatch } from '../../editor/ast/types';
+import { HydraParameter } from '../../editor/ast/types';
 import { BaseControl } from '../core/controls/base-control';
 
 interface FunctionGroup {
     name: string;
     line: number;
     position: number;
-    params: ValuePosition[];
-}
-
-interface FunctionGroups {
-    [key: string]: FunctionGroup;
+    params: HydraParameter[];
 }
 
 interface SortedGroup {
@@ -48,39 +44,30 @@ interface ExtendedControl extends BaseControl {
  * Utility functions for parameter management
  */
 export class ParameterUtils {
-    /**
-     * Gets a unique function ID
-     */
-    static getFunctionId(val: ValuePosition): string {
-        const position = 'functionStartCh' in val 
-            ? (val as unknown as ValueMatch).functionStartCh 
-            : val.ch;
-        return `${val.functionName}_line${val.lineNumber}_pos${position}`;
-    }
 
     /**
      * Groups values by their function
      */
-    static groupByFunction<T extends ValuePosition>(values: T[], filterFn: (val: T) => boolean = () => true): Map<string, FunctionGroup> {
+    static groupByFunction<T extends HydraParameter>(values: T[], filterFn: (HydraParameter: T) => boolean = () => true): Map<string, FunctionGroup> {
         const functionGroups = new Map<string, FunctionGroup>();
         
-        values.forEach(val => {
-            if (!filterFn(val)) return;
+        values.forEach(HydraParameter => {
+            if (!filterFn(HydraParameter)) return;
 
-            const functionId = this.getFunctionId(val);
-            const position = 'functionStartCh' in val 
-                ? (val as unknown as ValueMatch).functionStartCh 
-                : val.ch;
+            const functionId = HydraParameter.functionId
+            const position = 'functionStartCh' in HydraParameter 
+                ? HydraParameter.functionStartCh 
+                : HydraParameter.ch;
                 
             if (!functionGroups.has(functionId)) {
                 functionGroups.set(functionId, {
-                    name: val.functionName,
-                    line: val.lineNumber,
+                    name: HydraParameter.functionName,
+                    line: HydraParameter.lineNumber,
                     position,
                     params: []
                 });
             }
-            functionGroups.get(functionId)!.params.push(val);
+            functionGroups.get(functionId)!.params.push(HydraParameter);
         });
 
         return functionGroups;

@@ -1,4 +1,4 @@
-import { ControlParameter } from '../core/types/controls';
+import { HydraParameter } from '../../editor/ast/types';
 import { ParameterGroup, ColorGroup, PointGroup, NumberGroup } from '../core/types/parameter-groups';
 
 /**
@@ -8,7 +8,7 @@ export class ParameterGroupDetector {
     /**
      * Detects all parameter groups from a list of parameters
      */
-    static detectGroups(params: ControlParameter[]): ParameterGroup[] {
+    static detectGroups(params: HydraParameter[]): ParameterGroup[] {
         const handledParams = new Set<string>();
         const groups: ParameterGroup[] = [];
 
@@ -31,12 +31,12 @@ export class ParameterGroupDetector {
      * Detects RGB color parameter groups
      * @private
      */
-    private static detectColorGroups(params: ControlParameter[], handledParams: Set<string>): ColorGroup[] {
+    private static detectColorGroups(HydraParameter: HydraParameter[], handledParams: Set<string>): ColorGroup[] {
         const groups: ColorGroup[] = [];
-        const paramNames = params.map(p => p.paramName);
+        const paramNames = HydraParameter.map(p => p.paramName);
 
         if (paramNames.includes('r') && paramNames.includes('g') && paramNames.includes('b')) {
-            const colorParams = params.filter(p => ['r', 'g', 'b'].includes(p.paramName));
+            const colorParams = HydraParameter.filter(p => ['r', 'g', 'b'].includes(p.paramName));
             
             groups.push({
                 type: 'color',
@@ -56,7 +56,7 @@ export class ParameterGroupDetector {
      * Detects point parameter groups (X/Y pairs)
      * @private
      */
-    private static detectPointGroups(params: ControlParameter[], handledParams: Set<string>): PointGroup[] {
+    private static detectPointGroups(params: HydraParameter[], handledParams: Set<string>): PointGroup[] {
         const groups: PointGroup[] = [];
 
         params.forEach(param => {
@@ -125,14 +125,14 @@ export class ParameterGroupDetector {
      * Creates number groups for remaining parameters
      * @private
      */
-    private static detectRemainingNumbers(params: ControlParameter[], handledParams: Set<string>): NumberGroup[] {
-        return params
-            .filter(param => !handledParams.has(param.key))
-            .map(param => ({
+    private static detectRemainingNumbers(HydraParameter: HydraParameter[], handledParams: Set<string>): NumberGroup[] {
+        return HydraParameter
+            .filter(HydraParameter => !handledParams.has(HydraParameter.key))
+            .map(HydraParameter => ({
                 type: 'number',
-                params: [param],
+                params: [HydraParameter],
                 metadata: {
-                    label: param.paramName
+                    label: HydraParameter.paramName
                 }
             }));
     }

@@ -6,13 +6,9 @@ import { Logger } from '../../utils/logger';
 import { effect } from '@preact/signals-core';
 import { layout, actions, currentCode, currentParameters, placeholderMessage } from '../../state/signals';
 import { HydraInstance } from '../../editor/ast/types';
-import { ValueMatch } from '../../editor/ast/types';
-import { TweakpaneFolder } from '../adapters/types';
+import { HydraParameter } from '../../editor/ast/types';
+import { TweakpaneFolder, TweakpaneConfig, TweakpaneTab } from '../adapters/types';
 import { Layout } from '../adapters/dom-types';
-
-interface TabPages {
-    pages: any[]; // Tweakpane tab pages
-}
 
 /**
  * Manages the GUI components
@@ -23,10 +19,11 @@ export class GUIManager {
     private tweakpaneAdapter: TweakpaneAdapter;
     private parameterManager: ParameterManager;
     private settingsPage: SettingsPage | null;
-    private tabs: TabPages | null;
+    private tabs: TweakpaneTab | null;
     private parametersTab: TweakpaneFolder | null;
     private settingsTab: TweakpaneFolder | null;
     private container: HTMLElement | null;
+    private isSettingUp: boolean;
 
     constructor(hydra: HydraInstance) {
         this.hydra = hydra;
@@ -37,6 +34,8 @@ export class GUIManager {
         this.tabs = null;
         this.parametersTab = null;
         this.settingsTab = null;
+        this.container = null;
+        this.isSettingUp = false;
 
         this._setupSignalEffects();
     }
@@ -47,11 +46,11 @@ export class GUIManager {
     private _setupSignalEffects(): void {
         // Add effect to automatically update GUI when store changes
         effect(() => {
-            const positions = currentParameters.value;
+            const HydraParameter = currentParameters.value;
             const code = currentCode.value;
-            if (positions.length > 0 && code) {
-                Logger.log('gui-manager effect', positions, code);
-                this._updateGUI(positions, code);
+            if (HydraParameter.length > 0 && code) {
+                Logger.log('gui-manager effect', HydraParameter, code);
+                this._updateGUI(HydraParameter, code);
             }
         });
 
@@ -73,28 +72,40 @@ export class GUIManager {
     setupGUI(): void {
         Logger.log('setting up gui');
         
-        this.cleanup();
+        // Prevent multiple simultaneous setups
+        if (this.isSettingUp) return;
+        this.isSettingUp = true;
         
-        // Convert layout to match dom-types Layout interface
-        const domLayout: Layout = {
-            zIndex: parseInt(layout.value.zIndex),
-            position: layout.value.position
-        };
-        
-        // Setup container using DOM adapter
-        this.container = this.domAdapter.setupContainer(domLayout);
-        if (!this.container) return;
+        try {
+            this.cleanup();
+            
+            // Convert layout to match dom-types Layout interface
+            const domLayout: Layout = {
+                zIndex: parseInt(layout.value.zIndex),
+                position: layout.value.position
+            };
+            
+            // Setup container using DOM adapter
+            this.container = this.domAdapter.setupContainer(domLayout);
+            if (!this.container) {
+                this.isSettingUp = false;
+                return;
+            }
 
-        // Create Tweakpane instance
-        this.tweakpaneAdapter.createPane({
-            title: 'Hydra Controls',
-            container: this.container
-        });
+            // Create Tweakpane instance with specific configuration
+            const paneConfig: TweakpaneConfig = {
+                title: 'Hydra Controls',
+                container: this.container
+            };
+            this.tweakpaneAdapter.createPane(paneConfig);
 
-        // Initialize settings page after Tweakpane is created
-        this.settingsPage = new SettingsPage(this.hydra, this.tweakpaneAdapter);
+            // Initialize settings page after Tweakpane is created
+            this.settingsPage = new SettingsPage(this.hydra as any, this.tweakpaneAdapter);
 
-        this._setupTabs();
+            this._setupTabs();
+        } finally {
+            this.isSettingUp = false;
+        }
     }
 
     /**
@@ -102,42 +113,34 @@ export class GUIManager {
      * @private
      */
     private _setupTabs(): void {
-        this.tabs = this.tweakpaneAdapter.createTabs(['Parameters', 'Settings']);
-        if (!this.tabs) return;
+        // Create tabs with a slight delay to ensure proper initialization
+        setTimeout(() => {
+            const tabs = this.tweakpaneAdapter.createTabs(['Parameters', 'Settings']);
+            if (!tabs) return;
 
-        [this.parametersTab, this.settingsTab] = this.tabs.pages;
-        this._setupCallbacks();
+            this.tabs = tabs;
+            
+            // Get the tab pages and convert them to folders
+            this.parametersTab = tabs.pages[0] as unknown as TweakpaneFolder;
+            this.settingsTab = tabs.pages[1] as unknown as TweakpaneFolder;
+
+        }, 100);
     }
 
-    /**
-     * Sets up callbacks
-     * @private
-     */
-    private _setupCallbacks(): void {
-        if (!this.settingsPage || !this.settingsTab) return;
 
-        this.settingsPage.setup(this.settingsTab);
-        this.settingsPage.setResetCallback(() => {
-            this.parameterManager.resetAllValues();
-            actions.updateSettings({ isReset: true });
-        });
-        this.settingsPage.setDefaultCallback((index: number, defaultValue: any) => {
-            if (defaultValue !== undefined) {
-                this.parameterManager.revertValue(index, defaultValue);
-                actions.updateParameterValueByIndex(index, defaultValue);
-            }
-        });
-    }
 
     /**
      * Updates the GUI with new code and values
      * @private
      */
-    private _updateGUI(positions: ValueMatch[], code: string): void {
-        Logger.log('updating gui', 'current code:', code, 'positions:', positions);
+    private _updateGUI(HydraParameter: HydraParameter[], code: string): void {
+        Logger.log('updating gui', 'current code:', code, 'HydraParameter:', HydraParameter);
         
-        if (!this.container) {
+        // If no container exists or we're not currently setting up, initialize the GUI
+        if (!this.container && !this.isSettingUp) {
             this.setupGUI();
+            // Return early to let the setup complete and trigger another update
+            return;
         }
 
         if (this.parametersTab) {
@@ -146,14 +149,14 @@ export class GUIManager {
 
         try {
             // Update parameters
-            Logger.log('parameterManager.updateParameters', this.parametersTab, code, positions);
-            if (code && positions && positions.length > 0) {
+            Logger.log('parameterManager.updateParameters', this.parametersTab, code, HydraParameter);
+            if (code && HydraParameter && HydraParameter.length > 0 && this.parametersTab) {
                 this.parameterManager.updateParameters(
                     this.parametersTab, 
                     code, 
-                    positions
+                    HydraParameter
                 );
-                this.settingsPage?.updateDefaults(positions);
+                this.settingsPage?.updateDefaults(HydraParameter);
             }
 
             // Update settings
@@ -173,12 +176,14 @@ export class GUIManager {
         this.tweakpaneAdapter.cleanup();
         if (this.settingsPage) {
             this.settingsPage.cleanup();
+            this.settingsPage = null;
         }
         this.parameterManager.cleanup();
         this.domAdapter.cleanup();
         
         this.tabs = null;
         this.parametersTab = null;
-        this.settingsPage = null;
+        this.settingsTab = null;
+        this.container = null;
     }
 } 

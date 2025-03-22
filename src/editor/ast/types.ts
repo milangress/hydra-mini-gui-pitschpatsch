@@ -27,38 +27,42 @@ export interface HydraInstance {
     eval?: (code: string) => void;
 }
 
-export interface ValuePosition {
-    functionName: string;
-    paramName: string;
-    lineNumber: number;
-    ch: number;
-    parameterIndex?: number;
-    paramCount: number;
-}
-
 export interface FunctionInfo {
     name: string;
     startCh: number;
 }
 
-export interface ValueMatch {
-    value: number | string;
+/**
+ * Unified type for representing a parameter in the Hydra system.
+ * Used across the AST parser, editor, and GUI controls.
+ */
+export interface HydraParameter {
+    // Core parameter identification
+    functionName: string;
+    paramName: string;
+    key: string;
+    functionId: string;
+
+    // Parameter metadata
+    paramType: string;
+    paramDefault: any;
+    value: any;
+    type?: 'number' | 'source' | 'output';
+    options?: string[];
+
+    // Position in code
     lineNumber: number;
     ch: number;
-    length: number;
+    length?: number;
+    functionStartCh?: number;
+
+    // Parameter ordering
     index: number;
-    functionName: string;
-    functionStartCh: number;
     parameterIndex: number;
-    paramName: string;
-    paramType?: string;
-    paramDefault?: any;
-    type: 'number' | 'source' | 'output';
-    key: string;
-    options?: string[];
+    paramCount: number;
 }
 
 export interface TraversalState {
     parents: Node[];
     hydra: HydraInstance;
-} 
+}

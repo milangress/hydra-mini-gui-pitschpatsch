@@ -1,6 +1,7 @@
 import { Logger } from '../../../utils/logger';
 import { actions } from '../../../state/signals';
-import { ControlConfig, ControlBinding, ControlParameter, BaseControlOptions } from '../types/controls';
+import { ControlConfig, ControlBinding, BaseControlOptions } from '../types/controls';
+import { HydraParameter } from '../../../editor/ast/types';
 
 /**
  * Base class for all controls
@@ -9,7 +10,7 @@ export class BaseControl {
     protected name: string;
     protected value: any;
     protected defaultValue: any;
-    protected parameter: ControlParameter | undefined;
+    protected HydraParameter: HydraParameter;
     protected options: BaseControlOptions;
 
     /**
@@ -19,7 +20,7 @@ export class BaseControl {
         this.name = config.name;
         this.value = config.value;
         this.defaultValue = config.defaultValue;
-        this.parameter = config.parameter;
+        this.HydraParameter = config.HydraParameter;
         this.options = this._processOptions(config.options || {});
     }
 
@@ -35,9 +36,9 @@ export class BaseControl {
 
         controller.on('change', (event: { value: any }) => {
             this.value = event.value;
-            if (this.parameter?.key) {
+            if (this.HydraParameter?.key) {
                 actions.updateParameterValueByKey(
-                    this.parameter.key,
+                    this.HydraParameter.key,
                     this.value
                 );
             }
@@ -55,7 +56,7 @@ export class BaseControl {
             binding: obj,
             controller,
             originalValue: this.defaultValue,
-            parameter: this.parameter
+            parameter: this.HydraParameter
         };
     }
 
@@ -81,7 +82,7 @@ export class BaseControl {
      * Checks if this control can handle the parameter
      * @param param - The parameter to check
      */
-    static canHandle(param: ControlParameter): boolean {
+    static canHandle(param: HydraParameter): boolean {
         return false;
     }
 } 

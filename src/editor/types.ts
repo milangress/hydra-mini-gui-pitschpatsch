@@ -1,6 +1,4 @@
-import { Node, CallExpression, MemberExpression, Program, Literal, Identifier } from 'acorn';
 import { Generator, State } from 'astring';
-import { HydraInstance } from './ast/types';
 
 export interface CodePosition {
     value: number | string;

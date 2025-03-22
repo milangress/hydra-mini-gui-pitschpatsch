@@ -2,7 +2,7 @@ import { Logger } from '../../utils/logger';
 import { ParameterUtils } from '../utils/parameter-utils';
 import { TweakpaneAdapter } from '../adapters/tweakpane-adapter';
 import { TweakpaneFolder, TweakpaneTab, Pane } from '../adapters/types';
-import { ValuePosition } from '../../editor/ast/types';
+import { HydraParameter } from '../../editor/ast/types';
 import { HydraInstance, SettingsFolders, SettingsCallbacks } from './types/settings-page';
 
 /**
@@ -134,15 +134,15 @@ export class SettingsPage {
     /**
      * Updates the defaults display
      */
-    updateDefaults(valuePositions: ValuePosition[]): void {
+    updateDefaults(HydraParameter: HydraParameter[]): void {
         if (!this.folders.defaults) return;
 
         this.tweakpaneAdapter.clearFolder(this.folders.defaults);
 
         // Group and sort parameters
-        const functionGroups = ParameterUtils.groupByFunction(valuePositions, 
-            (val: ValuePosition & { paramType?: string; paramDefault?: any }) => 
-                val.paramType === 'float' && val.paramDefault !== undefined
+        const functionGroups = ParameterUtils.groupByFunction(HydraParameter, 
+            (HydraParameter: HydraParameter & { paramType?: string; paramDefault?: any }) => 
+                HydraParameter.paramType === 'float' && HydraParameter.paramDefault !== undefined
         );
         const sortedGroups = ParameterUtils.sortAndCountInstances(functionGroups);
         
@@ -156,26 +156,26 @@ export class SettingsPage {
             group.params.sort((a, b) => (a.parameterIndex || 0) - (b.parameterIndex || 0));
 
             // Add a button or label for each parameter
-            group.params.forEach((param: ValuePosition & { paramType?: string; paramDefault?: any; value?: any; index?: number }) => {
+            group.params.forEach((HydraParameter: HydraParameter & { paramType?: string; paramDefault?: any; value?: any; index?: number }) => {
                 // Parse both values as numbers for comparison
-                const currentValue = parseFloat(param.value);
-                const defaultValue = parseFloat(param.paramDefault);
+                const currentValue = parseFloat(HydraParameter.value);
+                const defaultValue = parseFloat(HydraParameter.paramDefault);
                 const isDefault = !isNaN(currentValue) && !isNaN(defaultValue) && 
                                 Math.abs(currentValue - defaultValue) < 0.0001;
 
                 if (isDefault) {
                     // If value matches default, show as disabled button
                     this.tweakpaneAdapter.createReadOnlyBinding(funcFolder, 
-                        { [param.paramName]: param.value }, 
-                        param.paramName, 
-                        { label: param.paramName }
+                        { [HydraParameter.paramName]: HydraParameter.value }, 
+                        HydraParameter.paramName, 
+                        { label: HydraParameter.paramName }
                     );
                 } else {
                     // If value differs from default, show as clickable button
                     this.tweakpaneAdapter.createButton(funcFolder, {
-                        title: `${Number(param.value)} → [ ${Number(param.paramDefault)} ]`,
-                        label: param.paramName,
-                        onClick: () => this.callbacks.onSetDefault?.(param.index || 0, param.paramDefault)
+                        title: `${Number(HydraParameter.value)} → [ ${Number(HydraParameter.paramDefault)} ]`,
+                        label: HydraParameter.paramName,
+                        onClick: () => this.callbacks.onSetDefault?.(HydraParameter.index, HydraParameter.paramDefault)
                     });
                 }
             });
@@ -213,19 +213,9 @@ export class SettingsPage {
         }
     }
 
-    /**
-     * Sets the reset callback
-     */
-    setResetCallback(callback: () => void): void {
-        this.callbacks.onReset = callback;
-    }
+   
 
-    /**
-     * Sets the default value callback
-     */
-    setDefaultCallback(callback: (index: number, defaultValue: any) => void): void {
-        this.callbacks.onSetDefault = callback;
-    }
+    
 
     /**
      * Cleans up resources
