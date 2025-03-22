@@ -13,15 +13,15 @@ const banner = `/*!
  */
 `;
 
-async function runBuild() {
+const coolifyUrl = Bun.env.COOLIFY_URL || 'http://localhost:3000';
+const footer = `//# sourceMappingURL=http://${coolifyUrl}/hydra-pitschpatsch.js.map`;
+
+export async function runBuild() {
     try {
         // Build the JS bundle
         const result = await build({
-            entrypoints: ["./src/index.js"],
+            entrypoints: ["hydra-pitschpatsch.js", "./index.html"],
             outdir: "./dist",
-            naming: {
-                entry: "hydra-pitschpatsch.js"
-            },
             sourcemap: "linked",
             minify: false,
             define: {
@@ -29,8 +29,9 @@ async function runBuild() {
                 __PKG_VERSION__: JSON.stringify(pkg.version),
                 __PKG_NAME__: JSON.stringify(pkg.name)
             },
+            env: 'inline',
             banner,
-            footer: "//# sourceMappingURL=http://localhost:3000/hydra-pitschpatsch.js.map",
+            footer,
         });
 
         if (!result.success) {
@@ -40,12 +41,6 @@ async function runBuild() {
         for (const output of result.outputs) {
             console.log(output.path);
         }
-
-        // Copy the demo HTML file to dist
-        await copyFile(
-            join(process.cwd(), "src", "demo.html"),
-            join(process.cwd(), "dist", "demo.html")
-        );
 
         console.log("Build completed successfully!");
     } catch (error) {

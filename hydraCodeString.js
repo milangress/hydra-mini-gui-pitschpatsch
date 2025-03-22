@@ -136,3 +136,61 @@ osc()
   )
   .out()
 `
+export const defaultCode = `
+osc(82,0.09,0.89999)
+  .rotate(0.5)
+  .out()
+
+osc(400,1.02).scroll(0).out()
+
+src(o0)
+  .modulate(
+    osc(6,0,1.5).modulate(noise(3).sub(gradient()),1)
+    .brightness(-0.5)
+  ,0.003)
+  .layer(
+  osc(30,0.1,1.5).mask(shape(4,0.3,0))
+  ).out(o0)
+
+var epsilon=0.003
+var func = () => noise(9.9,0.35)
+solid(3.45,0,255).layer(func().luma(-epsilon,0)).out(o0)
+
+osc(5, 1.65, -0.021)
+    .kaleid([2,3.3,5,7,8,9,10].fast(0.1))
+    .color(0.5, 0.81)
+    .colorama(0.4)
+    .rotate(0.009,()=>Math.sin(time)* -0.001 )
+    .modulateRotate(o0,()=>Math.sin(time) * 0.003)
+    .modulate(o0, 0.9)
+    .scale(0.9)
+    .out(o0)
+`;
+
+export function makeCodeString(code) {
+  const coolifyUrl = process.env.COOLIFY_URL || 'http://localhost:3000';
+
+  const loadHydraUrl = `await loadScript("${coolifyUrl}/hydra-pitschpatsch.js")`;
+
+  return `${loadHydraUrl}\n${code}`;
+}
+
+export function getCode(testMode) {
+  const code = testMode === 'allFunc' ? allFuncCode : 
+  testMode === 'special' ? specialCases : defaultCode;
+  return makeCodeString(code);
+}
+
+export function getAllCode() {
+  return [makeCodeString(allFuncCode), makeCodeString(specialCases), makeCodeString(defaultCode)];
+}
+
+export function makeHydraUrl(codeString) {
+  function encodeForHydraURL(code) {
+    return btoa(encodeURIComponent(code));
+  }
+  
+  const encodedCode = encodeForHydraURL(codeString);
+  const hydraUrl = `https://hydra.ojack.xyz/?code=${encodedCode}`;
+  return hydraUrl;
+}

@@ -34,6 +34,19 @@
             background: rgba(0, 0, 0, 0.2);
             border-radius: 8px;
         }
+        .example-links {
+            margin: 10px 0;
+            text-align: center;
+        }
+        .example-links a {
+            color: #fff;
+            text-decoration: none;
+            padding: 0 10px;
+        }
+        .example-links a:hover {
+            text-decoration: underline;
+            color: #a0a0ff;
+        }
     </style>
 </head>
 <body>
@@ -42,35 +55,47 @@
         <div class="hydra-container">
             <iframe id="hydra-iframe" title="Hydra Editor"></iframe>
         </div>
+        <div class="example-links">
+            <!-- Example links will be dynamically populated by JavaScript -->
+        </div>
         <div class="controls" id="gui-container">
             <!-- The GUI will be mounted here -->
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { allFuncCode, specialCases, defaultCode, makeCodeString } from './hydraCodeString.js';
+        
         // Get the current host for the loadScript URL
         const currentHost = window.location.origin;
         const libraryUrl = `${currentHost}/hydra-pitschpatsch.js`;
+
+        function makeHydraUrl(code) {
+            const encodedCode = btoa(makeCodeString(code));
+            return `https://hydra.ojack.xyz/?code=${encodedCode}`;
+        }
+        
+        // Set up example links
+        document.querySelector('.example-links').innerHTML = `
+            <a href="${makeHydraUrl(allFuncCode)}" target="_blank">Basic Functions</a> |
+            <a href="${makeHydraUrl(specialCases)}" target="_blank">Complex Patterns</a> |
+            <a href="${makeHydraUrl(defaultCode)}" target="_blank">Creative Examples</a>
+        `;
         
         // Basic Hydra code with controls
         const code = `
             // Load the mini GUI library from the current host
             await loadScript("${libraryUrl}")
 
-            // use Alt+Enter to run this block and see th Ui
+            // use Alt+Enter to run this block and see the UI
             osc(40, 0.1, 0.8)
                 .color(1, 0.5, 0.4)
                 .rotate(0.5)
                 .out()
-
         `;
 
-        // Encode the code for the iframe URL
-        const encodedCode = btoa(code);
-        const hydraUrl = `https://hydra.ojack.xyz/?code=${encodedCode}`;
-        
         // Set the iframe source
-        document.getElementById('hydra-iframe').src = hydraUrl;
+        document.getElementById('hydra-iframe').src = makeHydraUrl(code);
     </script>
 </body>
 </html> 

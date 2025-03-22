@@ -1,63 +1,12 @@
 // Simple Bun server for development
-import { allFuncCode, specialCases } from './hydraTestPageAllFunc.js';
+import { getCode, makeHydraUrl } from './hydraCodeString.js';
+import { runBuild } from './build.js';
 
-const defaultCode = `
-osc(82,0.09,0.89999)
-  .rotate(0.5)
-  .out()
+const codeWithLoad = getCode(process.env.TEST_MODE);
 
-osc(400,1.02).scroll(0).out()
+const hydraUrl = makeHydraUrl(codeWithLoad);
 
-src(o0)
-  .modulate(
-    osc(6,0,1.5).modulate(noise(3).sub(gradient()),1)
-    .brightness(-0.5)
-  ,0.003)
-  .layer(
-  osc(30,0.1,1.5).mask(shape(4,0.3,0))
-  ).out(o0)
-
-var epsilon=0.003
-var func = () => noise(9.9,0.35)
-solid(3.45,0,255).layer(func().luma(-epsilon,0)).out(o0)
-
-osc(5, 1.65, -0.021)
-    .kaleid([2,3.3,5,7,8,9,10].fast(0.1))
-    .color(0.5, 0.81)
-    .colorama(0.4)
-    .rotate(0.009,()=>Math.sin(time)* -0.001 )
-    .modulateRotate(o0,()=>Math.sin(time) * 0.003)
-    .modulate(o0, 0.9)
-    .scale(0.9)
-    .out(o0)
-`;
-
-
-const code = process.env.TEST_MODE === 'allFunc' ? allFuncCode : 
-process.env.TEST_MODE === 'special' ? specialCases : defaultCode;
-
-const loadHydraUrl = `await loadScript("http://localhost:3000/hydra-pitschpatsch.js")`;
-
-const codeWithLoad = `${loadHydraUrl}\n${code}`;
-
-// Helper function to properly encode the code for URL - matching Hydra's implementation
-function encodeForHydraURL(code) {
-  return btoa(encodeURIComponent(code));
-}
-
-const encodedCode = encodeForHydraURL(codeWithLoad);
-const hydraUrl = `https://hydra.ojack.xyz/?code=${encodedCode}`;
-
-// Build the bundle
-const build = await Bun.build({
-    entrypoints: ['./src/index.js'],
-    outdir: './dist',
-});
-
-if (!build.success) {
-    console.error('Build failed:', build.logs);
-    process.exit(1);
-}
+await runBuild();
 
 const server = Bun.serve({
     port: 3000,
@@ -66,7 +15,7 @@ const server = Bun.serve({
         
         // Serve demo.html at the root
         if (url.pathname === '/' || url.pathname === '/index.html') {
-            return new Response(Bun.file('./dist/demo.html'), {
+            return new Response(Bun.file('./dist/index.html'), {
                 headers: {
                     'Content-Type': 'text/html',
                     'Cache-Control': 'no-cache'
@@ -88,6 +37,15 @@ const server = Bun.serve({
             return new Response(Bun.file('./dist/hydra-pitschpatsch.js.map'), {
                 headers: {
                     'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'no-cache'
+                }
+            });
+        }
+        if (url.pathname === '/hydraCodeString.js') {
+            return new Response(Bun.file('./dist/hydraCodeString.js'), {
+                headers: {
+                    'Content-Type': 'application/javascript',
                     'Access-Control-Allow-Origin': '*',
                     'Cache-Control': 'no-cache'
                 }
