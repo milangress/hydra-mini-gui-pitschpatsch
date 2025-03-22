@@ -1,4 +1,4 @@
-import { signal, computed, effect, Signal } from '@preact/signals-core';
+import { signal, computed, effect, untracked } from '@preact/signals-core';
 import { Logger } from '../utils/logger';
 import { Parser } from 'acorn';
 import { type HydraParameter } from '../editor/ast/types';
@@ -51,10 +51,10 @@ export const layout = signal<Layout>({
 export const guiReady = signal<boolean>(false);
 
 // Computed values
-export const hasErrors = computed(() => errors.value.length > 0);
-export const hasParameters = computed(() => currentParameters.value.length > 0);
+export const hasErrors = computed<boolean>(() => errors.value.length > 0);
+export const hasParameters = computed<boolean>(() => currentParameters.value.length > 0);
 
-export const placeholderMessage = computed(() => {
+export const placeholderMessage = computed<string | null>(() => {
     Logger.log('placeholderMessage computed', currentCode.value, currentParameters.value);
 
     if (!currentCode.value) {
@@ -83,6 +83,18 @@ effect(() => {
 });
 effect(() => {
     Logger.log('errors Signal updated', errors.value);
+});
+
+effect(() => {
+  if (currentCode.value) {
+    parametersMap.value = untracked(() => {
+      Logger.log(
+        "currentCode updated Resetting parametersMap",
+        parametersMap.value
+      );
+      return new Map();
+    });
+  }
 });
 
 function updateParameterValue(identifier: string | number, value: number | string, type: 'key' | 'index' = 'key'): void {
