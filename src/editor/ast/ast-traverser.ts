@@ -98,11 +98,16 @@ export class ASTTraverser {
         if (!parent || parent.type !== 'CallExpression') return 0;
 
         const callExpr = parent as CallExpression;
-        const paramIndex = callExpr.arguments.findIndex(arg => arg === node);
+        const paramIndex = callExpr.arguments.findIndex(arg => {
+            // Direct match
+            if (arg === node) return true;
+            // Match through UnaryExpression (for negative numbers)
+            if (arg.type === 'UnaryExpression' && arg.argument === node) return true;
+            return false;
+        });
         return paramIndex === -1 ? callExpr.arguments.length : paramIndex;
     }
 
-    
     /**
      * Traverses an AST to find all numeric values, source references, and output references.
      * For each value found, collects detailed metadata including:
@@ -186,7 +191,7 @@ export class ASTTraverser {
         const parent = state.parents[state.parents.length - 1];
         const nodeToUse = parent?.type === 'UnaryExpression' ? parent : node;
         
-        const { functionInfo, paramCount } = this.getNodeContext(nodeToUse, state, line);
+        const { functionInfo, paramCount, parameterIndex } = this.getNodeContext(nodeToUse, state, line);
         if (!functionInfo) return;
 
         let value = node.value as number;
@@ -200,7 +205,7 @@ export class ASTTraverser {
         }
 
         this.matches.push({
-            ...this.createBaseParameter(node, functionInfo, paramCount, lineStart),
+            ...this.createBaseParameter(node, functionInfo, paramCount, lineStart, parameterIndex),
             value,
             ch: startColumn,
             length,
@@ -216,27 +221,26 @@ export class ASTTraverser {
         if (!isOutput && !isSource) return;
 
         const lineStart = (node.loc?.start.line ?? 1) - 1;
-        const { functionInfo, paramCount } = this.getNodeContext(node, state, line);
+        const { functionInfo, paramCount, parameterIndex } = this.getNodeContext(node, state, line);
         if (!functionInfo) return;
 
         this.matches.push({
-            ...this.createBaseParameter(node, functionInfo, paramCount, lineStart),
+            ...this.createBaseParameter(node, functionInfo, paramCount, lineStart, parameterIndex),
             value: name,
             type: isOutput ? 'output' : 'source',
             options: isOutput ? this.availableOutputs : this.availableSources
         } as HydraParameter);
     }
 
-
-    
-
     private getNodeContext(node: Node, state: TraversalState, line: string): {
         functionInfo: FunctionInfo | null;
         paramCount: number;
+        parameterIndex: number;
     } {
         // Try AST-based extraction first
         let functionInfo = this._getFunctionNameFromAST(node, state.parents ?? []);
-        let paramCount = this._getParameterCount(node, state.parents ?? []);
+        let parameterIndex = this._getParameterCount(node, state.parents ?? []);
+        let paramCount = parameterIndex;
 
         // Fall back to regex-based extraction if needed
         if (!functionInfo && line) {
@@ -257,14 +261,14 @@ export class ASTTraverser {
             }
         }
 
-        return { functionInfo, paramCount: paramCount ?? 0 };
+        return { functionInfo, paramCount, parameterIndex };
     }
 
-    private getParamMetadata(functionName: string, paramCount: number) {
+    private getParamMetadata(functionName: string, parameterIndex: number) {
         const transform = this.hydra?.generator?.glslTransforms?.[functionName];
-        const paramInfo = transform?.inputs?.[paramCount];
+        const paramInfo = transform?.inputs?.[parameterIndex];
         return {
-            name: paramInfo?.name ?? `val${paramCount + 1}`,
+            name: paramInfo?.name ?? `val${parameterIndex + 1}`,
             type: paramInfo?.type ?? 'number',
             default: paramInfo?.default
         };
@@ -274,9 +278,10 @@ export class ASTTraverser {
         node: Node,
         functionInfo: FunctionInfo,
         paramCount: number,
-        lineStart: number
+        lineStart: number,
+        parameterIndex: number
     ): Partial<HydraParameter> {
-        const paramMeta = this.getParamMetadata(functionInfo.name, paramCount);
+        const paramMeta = this.getParamMetadata(functionInfo.name, parameterIndex);
         
         return {
             lineNumber: lineStart,
@@ -285,7 +290,7 @@ export class ASTTraverser {
             index: this.currentIndex++,
             functionName: functionInfo.name,
             functionStartCh: functionInfo.startCh,
-            parameterIndex: paramCount,
+            parameterIndex,
             paramName: paramMeta.name,
             paramType: paramMeta.type,
             paramDefault: paramMeta.default,
@@ -295,13 +300,13 @@ export class ASTTraverser {
                 paramName: paramMeta.name,
                 lineNumber: lineStart,
                 ch: node.loc?.start.column ?? 0,
-                parameterIndex: paramCount
+                parameterIndex
             }),
             functionId: generateFunctionId({
                 functionName: functionInfo.name,
                 lineNumber: lineStart,
-                ch: node.loc?.start.column ?? 0,
-                parameterIndex: paramCount
+                ch: functionInfo.startCh,
+                parameterIndex: undefined // Don't include parameter info in function ID
             })
         };
     }
