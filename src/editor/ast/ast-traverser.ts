@@ -94,17 +94,46 @@ export class ASTTraverser {
      * For example, in color(1, 0.5, 1), the '0.5' value has parameter index 1.
      */
     private _getParameterCount(node: Node, parents: Node[]): number {
-        const parent = parents[parents.length - 1];
-        if (!parent || parent.type !== 'CallExpression') return 0;
+        // Find the nearest CallExpression parent
+        let callExpr: CallExpression | null = null;
+        console.log('getParameterCount', 'parents', parents);
+        for (let i = parents.length - 1; i >= 0; i--) {
+            const parent = parents[i];
+            console.log( 'parent', parent);
+            if (parent.type === 'CallExpression') {
+                console.log('is call expression', 'parent', parent);
+                // Check if this call expression contains our node in its arguments
+                const containsNode = (parent as CallExpression).arguments.some(arg => {
+                    console.log('arg', arg);
+                    // Direct match
+                    if (arg === node) return true;
+                    // Match through UnaryExpression (for negative numbers)
+                    if (arg.type === 'UnaryExpression' && arg.argument === node) return true;
+                    return false;
+                });
 
-        const callExpr = parent as CallExpression;
+                if (containsNode) {
+                    callExpr = parent as CallExpression;
+                    break;
+                }
+            }
+        }
+        console.log('callExpr', callExpr);
+
+        if (!callExpr) return 0;
+
         const paramIndex = callExpr.arguments.findIndex(arg => {
+            console.log('callExpr.arguments.findIndex', 'arg', arg);
             // Direct match
             if (arg === node) return true;
             // Match through UnaryExpression (for negative numbers)
             if (arg.type === 'UnaryExpression' && arg.argument === node) return true;
             return false;
         });
+
+        console.log('callExpr.arguments', callExpr.arguments);
+        console.log('paramIndex', paramIndex);
+
         return paramIndex === -1 ? callExpr.arguments.length : paramIndex;
     }
 
@@ -135,6 +164,7 @@ export class ASTTraverser {
                 // Handle numeric literals
                 Literal: (node: Node, state: TraversalState) => {
                     if (!isNumericLiteral(node)) return;
+                    console.log('Literal', node);
                     
                     const line = getNodeLine(node, this.code!);
                     if (shouldSkipLine(line)) return;
@@ -150,6 +180,7 @@ export class ASTTraverser {
                 Identifier: (node: Node, state: TraversalState) => {
                     const line = getNodeLine(node, this.code!);
                     if (shouldSkipLine(line)) return;
+                    console.log('Identifier', node);
 
                     try {
                         this.processIdentifier(node as Identifier, state, line ?? '');
