@@ -128,6 +128,14 @@ export const actions = {
     updateSettings: (newSettings: Partial<Settings>) => settings.value = { ...settings.value, ...newSettings },
     setError: (error: string) => errors.value = [error],
     clearErrors: () => errors.value = [],
+    resetParameter: (index: number) => {
+        const newMap = new Map(parametersMap.value);
+        const param = currentParameters.value.find(p => p.index === index);
+        if (param) {
+            newMap.set(index, param.value);
+        }
+        parametersMap.value = newMap;
+    }
 };
 
 export const cmCodeRange = computed(() => {

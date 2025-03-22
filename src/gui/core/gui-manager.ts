@@ -26,6 +26,7 @@ export class GUIManager {
     private tabs: TabPages | null;
     private parametersTab: TweakpaneFolder | null;
     private settingsTab: TweakpaneFolder | null;
+    private container: HTMLElement | null;
 
     constructor(hydra: HydraInstance) {
         this.hydra = hydra;
@@ -81,13 +82,13 @@ export class GUIManager {
         };
         
         // Setup container using DOM adapter
-        const container = this.domAdapter.setupContainer(domLayout);
-        if (!container) return;
+        this.container = this.domAdapter.setupContainer(domLayout);
+        if (!this.container) return;
 
         // Create Tweakpane instance
         this.tweakpaneAdapter.createPane({
             title: 'Hydra Controls',
-            container
+            container: this.container
         });
 
         // Initialize settings page after Tweakpane is created
@@ -135,13 +136,7 @@ export class GUIManager {
     private _updateGUI(positions: ValueMatch[], code: string): void {
         Logger.log('updating gui', 'current code:', code, 'positions:', positions);
         
-        // Setup GUI if needed
-        const container = this.domAdapter.setupContainer({
-            zIndex: parseInt(layout.value.zIndex),
-            position: layout.value.position
-        });
-        
-        if (container) {
+        if (!this.container) {
             this.setupGUI();
         }
 
