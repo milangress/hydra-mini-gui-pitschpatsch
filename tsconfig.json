@@ -6,6 +6,8 @@
       "module": "ESNext",
       "moduleDetection": "force",
       "allowJs": false,
+
+      "esModuleInterop": true,
   
       // Setting up preact
       "baseUrl": "./",
