@@ -2,13 +2,8 @@ import { makeTraveler } from 'astravel';
 import type { Node, CallExpression, Identifier, MemberExpression, Literal, UnaryExpression } from 'acorn';
 import { extractFunctionNameFromCode, countParametersBeforePosition } from '../../utils/code-utils';
 import type { HydraInstance, FunctionInfo, HydraParameter, TraversalState } from './types';
-
-class HydraTraversalError extends Error {
-    constructor(message: string, public node?: Node) {
-        super(message);
-        this.name = 'HydraTraversalError';
-    }
-}
+import { HydraKeyGenerationError, HydraTraversalError } from './ast-errors';
+import { generateKey, generateFunctionId, getNodeLine, shouldSkipLine, isNumericLiteral, isIdentifier } from './ast-utils';
 
 /**
  * Traverses Abstract Syntax Trees (AST) of Hydra code to analyze and extract information
@@ -105,29 +100,7 @@ export class ASTTraverser {
         return paramIndex === -1 ? callExpr.arguments.length : paramIndex;
     }
 
-    /**
-     * Generate a unique key for a value based on its context in the code.
-     * Includes function name, parameter name, and position information to ensure uniqueness.
-     * 
-     * Examples:
-     * - osc(10, 0.5) -> osc_freq_line1_pos3_value, osc_sync_line1_pos7_value
-     * - osc(10).rotate(6.22) -> osc_freq_line1_pos3_value, rotate_angle_line1_pos12_value
-     */
-    private _generateKey(params: Partial<HydraParameter>): string {
-        const paramPart = params.paramName ?? `param${params.parameterIndex}`;
-        const functionName = params.functionName ?? 'unknown';
-        const lineNumber = params.lineNumber ?? 0;
-        const ch = params.ch ?? 0;
-        return `${functionName}_${paramPart}_line${lineNumber}_pos${ch}_value`;
-    }
-
-    private _generateFunctionId(params: Partial<HydraParameter>): string {
-        const position = params.functionStartCh ?? params.ch ?? 0;
-        const functionName = params.functionName ?? 'unknown';
-        const lineNumber = params.lineNumber ?? 0;
-        return `${functionName}_line${lineNumber}_pos${position}`;
-    }
-
+    
     /**
      * Traverses an AST to find all numeric values, source references, and output references.
      * For each value found, collects detailed metadata including:
@@ -148,24 +121,28 @@ export class ASTTraverser {
                     try {
                         this.processNode(node, state, matches, code);
                     } catch (error) {
-                        throw new HydraTraversalError(
-                            error instanceof Error ? error.message : 'Unknown error processing node',
-                            node
-                        );
+                        if (error instanceof HydraKeyGenerationError) {
+                            console.error('Key generation failed:', error.message, 'Context:', error.context);
+                        } else {
+                            throw new HydraTraversalError(
+                                error instanceof Error ? error.message : 'Unknown error processing node',
+                                node
+                            );
+                        }
+                        return; // Skip this node but continue traversal
                     }
 
                     // Traverse children with updated parent chain
                     const oldParents = state.parents || [];
                     state.parents = [...oldParents, node];
                     
-                    // Use the traveler's built-in traversal
+                    // Use the traveler's built-in traversal methods
                     if (node.type === 'Program') {
-                        // First cast to unknown to avoid type checking, then to the expected shape
                         const program = node as unknown as { body: Node[] };
-                        this.go(program.body, state);
+                        program.body.forEach(child => this.super.go.call(this, child, state));
                     }
                     else if (Array.isArray(node)) {
-                        node.forEach(child => this.go(child, state));
+                        node.forEach(child => this.super.go.call(this, child, state));
                     }
                     else {
                         const keys = Object.keys(node);
@@ -173,7 +150,7 @@ export class ASTTraverser {
                             const key = keys[i];
                             const value = (node as any)[key];
                             if (value && typeof value === 'object') {
-                                this.go(value, state);
+                                this.super.go.call(this, value, state);
                             }
                         }
                     }
@@ -184,7 +161,9 @@ export class ASTTraverser {
 
             traveler.go(ast, { parents: [], hydra: this.hydra });
         } catch (error) {
-            if (error instanceof HydraTraversalError) {
+            if (error instanceof HydraKeyGenerationError) {
+                console.error('Key generation failed:', error.message, 'Context:', error.context);
+            } else if (error instanceof HydraTraversalError) {
                 console.error('Error traversing AST:', error.message, 'at node:', error.node);
             } else {
                 console.error('Unexpected error during AST traversal:', error);
@@ -198,32 +177,17 @@ export class ASTTraverser {
     }
 
     private processNode(node: Node, state: TraversalState, matches: HydraParameter[], code: string) {
-        const line = this.getNodeLine(node, code);
-        if (this.shouldSkipLine(line)) return;
+        const line = getNodeLine(node, code);
+        if (shouldSkipLine(line)) return;
 
-        if (this.isNumericLiteral(node)) {
+        if (isNumericLiteral(node)) {
             this.processNumericLiteral(node, state, matches, code, line ?? '');
-        } else if (this.isIdentifier(node)) {
+        } else if (isIdentifier(node)) {
             this.processIdentifier(node, state, matches, code, line ?? '');
         }
     }
 
-    private getNodeLine(node: Node, code: string): string | undefined {
-        const lineNumber = (node.loc?.start.line ?? 1) - 1;
-        return code.split('\n')[lineNumber];
-    }
-
-    private shouldSkipLine(line?: string): boolean {
-        return !line || line.includes('loadScript') || line.includes('await loadScript');
-    }
-
-    private isNumericLiteral(node: Node): node is Literal {
-        return node.type === 'Literal' && typeof (node as Literal).value === 'number';
-    }
-
-    private isIdentifier(node: Node): node is Identifier {
-        return node.type === 'Identifier';
-    }
+    
 
     private getNodeContext(node: Node, state: TraversalState, line: string): {
         functionInfo: FunctionInfo | null;
@@ -285,14 +249,14 @@ export class ASTTraverser {
             paramType: paramMeta.type,
             paramDefault: paramMeta.default,
             paramCount,
-            key: this._generateKey({
+            key: generateKey({
                 functionName: functionInfo.name,
                 paramName: paramMeta.name,
                 lineNumber: lineStart,
                 ch: node.loc?.start.column ?? 0,
                 parameterIndex: paramCount
             }),
-            functionId: this._generateFunctionId({
+            functionId: generateFunctionId({
                 functionName: functionInfo.name,
                 lineNumber: lineStart,
                 ch: node.loc?.start.column ?? 0,
