@@ -124,6 +124,14 @@ export class ASTTraverser {
 
         try {
             const traveler = makeTraveler({
+                // Maintain parent chain for all nodes
+                go: function(node: Node, state: TraversalState) {
+                    const oldParents = state.parents || [];
+                    state.parents = [...oldParents, node];
+                    this.super.go.call(this, node, state);
+                    state.parents = oldParents;
+                },
+
                 // Handle numeric literals
                 Literal: (node: Node, state: TraversalState) => {
                     if (!isNumericLiteral(node)) return;
