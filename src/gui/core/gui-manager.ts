@@ -7,13 +7,15 @@ import { effect } from '@preact/signals-core';
 import { layout, actions, currentCode, currentParameters, placeholderMessage } from '../../state/signals';
 import { HydraInstance } from '../../editor/ast/types';
 import { ValueMatch } from '../../editor/ast/types';
+import { TweakpaneFolder } from '../adapters/types';
+import { Layout } from '../adapters/dom-types';
 
 interface TabPages {
     pages: any[]; // Tweakpane tab pages
 }
 
 /**
- * New GUIManager that separates concerns and is more testable
+ * Manages the GUI components
  */
 export class GUIManager {
     private hydra: HydraInstance;
@@ -21,11 +23,9 @@ export class GUIManager {
     private tweakpaneAdapter: TweakpaneAdapter;
     private parameterManager: ParameterManager;
     private settingsPage: SettingsPage | null;
-    
-    // Tweakpane instance
     private tabs: TabPages | null;
-    private parametersTab: any | null;
-    private settingsTab: any | null;
+    private parametersTab: TweakpaneFolder | null;
+    private settingsTab: TweakpaneFolder | null;
 
     constructor(hydra: HydraInstance) {
         this.hydra = hydra;
@@ -33,11 +33,17 @@ export class GUIManager {
         this.tweakpaneAdapter = new TweakpaneAdapter();
         this.parameterManager = new ParameterManager(this.tweakpaneAdapter);
         this.settingsPage = null;
-        
         this.tabs = null;
         this.parametersTab = null;
         this.settingsTab = null;
 
+        this._setupSignalEffects();
+    }
+
+    /**
+     * Sets up signal effects for automatic GUI updates
+     */
+    private _setupSignalEffects(): void {
         // Add effect to automatically update GUI when store changes
         effect(() => {
             const positions = currentParameters.value;
@@ -63,14 +69,20 @@ export class GUIManager {
     /**
      * Sets up the GUI
      */
-    setupGUI(): any | null {
+    setupGUI(): void {
         Logger.log('setting up gui');
         
         this.cleanup();
         
+        // Convert layout to match dom-types Layout interface
+        const domLayout: Layout = {
+            zIndex: parseInt(layout.value.zIndex),
+            position: layout.value.position
+        };
+        
         // Setup container using DOM adapter
-        const container = this.domAdapter.setupContainer(layout.value);
-        if (!container) return null;
+        const container = this.domAdapter.setupContainer(domLayout);
+        if (!container) return;
 
         // Create Tweakpane instance
         this.tweakpaneAdapter.createPane({
@@ -82,8 +94,6 @@ export class GUIManager {
         this.settingsPage = new SettingsPage(this.hydra, this.tweakpaneAdapter);
 
         this._setupTabs();
-
-        return this.tweakpaneAdapter.pane;
     }
 
     /**
@@ -123,8 +133,15 @@ export class GUIManager {
      * @private
      */
     private _updateGUI(positions: ValueMatch[], code: string): void {
-        Logger.log('updating gui', !this.tweakpaneAdapter.pane, 'current code:', code, 'positions:', positions);
-        if (!this.tweakpaneAdapter.pane) {
+        Logger.log('updating gui', 'current code:', code, 'positions:', positions);
+        
+        // Setup GUI if needed
+        const container = this.domAdapter.setupContainer({
+            zIndex: parseInt(layout.value.zIndex),
+            position: layout.value.position
+        });
+        
+        if (container) {
             this.setupGUI();
         }
 

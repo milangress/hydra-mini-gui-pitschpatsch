@@ -5,7 +5,11 @@ import { TweakpaneAdapter } from '../adapters/tweakpane-adapter';
 import { TweakpaneFolder } from '../adapters/types';
 import { ValuePosition, ValueMatch } from '../../editor/ast/types';
 import { actions } from '../../state/signals';
-import { ControlFactory } from './controls/control-factory';
+import { ParameterGroupDetector } from '../utils/parameter-group-detector';
+import { NumberControl } from './controls/number-control';
+import { ColorControl } from './controls/color-control';
+import { PointControl } from './controls/point-control';
+import { ControlParameter } from './types/controls';
 
 /**
  * Manages parameter organization and GUI updates
@@ -57,7 +61,7 @@ export class ParameterManager {
             group.params.sort((a, b) => (a.parameterIndex || 0) - (b.parameterIndex || 0));
 
             // Let the ControlFactory handle control creation and binding
-            ControlFactory.createControls(
+            this.createControls(
                 groupFolder, 
                 group.params,
                 this.tweakpaneAdapter
@@ -91,5 +95,51 @@ export class ParameterManager {
      */
     cleanup(): void {
         // Nothing to clean up anymore since we're not maintaining state
+    }
+
+    createControls(
+        folder: TweakpaneFolder, 
+        params: ControlParameter[],
+        tweakpaneAdapter: TweakpaneAdapter
+    ): void {
+        const groups = ParameterGroupDetector.detectGroups(params);
+
+        groups.forEach(group => {
+            Logger.log('ControlFactory creating control for group:', group);
+            
+            if (group.type === 'color') {
+                new ColorControl({
+                    name: group.params.map(p => p.paramName).join(''),
+                    options: {
+                        label: group.metadata.label ?? group.params[0].paramName,
+                        type: 'float'
+                    },
+                    params: group.params,
+                    value: undefined,
+                    defaultValue: undefined
+                }).createBinding(folder, tweakpaneAdapter);
+            } else if (group.type === 'point') {
+                new PointControl({
+                    name: group.params.map(p => p.paramName).join(''),
+                    options: {
+                        label: group.metadata.label ?? group.params[0].paramName,
+                        mode: 'normal'
+                    },
+                    params: group.params,
+                    value: undefined,
+                    defaultValue: undefined
+                }).createBinding(folder, tweakpaneAdapter);
+            } else {
+                // Single number control
+                const param = group.params[0];
+                new NumberControl({
+                    name: param.paramName,
+                    options: { label: param.paramName },
+                    value: param.value,
+                    defaultValue: param.paramDefault,
+                    parameter: param
+                }).createBinding(folder, tweakpaneAdapter);
+            }
+        });
     }
 } 
