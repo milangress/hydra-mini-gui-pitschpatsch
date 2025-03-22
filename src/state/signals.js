@@ -1,7 +1,7 @@
 import { signal, computed, effect } from '@preact/signals-core';
 import { Logger } from '../utils/logger.js';
-import { Parser } from '../utils/parser.js';
-import { codeFormatter } from '../utils/codeFormatter.js';
+import { Parser } from 'acorn';
+
 
 /**
  * Central state management for Hydra Mini GUI using signals
@@ -13,8 +13,18 @@ export const currentEvalCode = signal(null);
 export const currentEvalRange = signal(null);
 export const currentParameters = signal([]);
 
-// GUI state
+
+// New parameters
 export const parametersMap = signal(new Map());
+export const parameters = computed(() => {
+    const params = currentParameters.value.map(param => ({
+        ...param,
+        value: parametersMap.value.get(param.index) ?? param.value
+    }));
+    return params;
+});
+
+
 export const settings = signal({
     isReset: false,
     showSettings: false
@@ -31,17 +41,8 @@ export const guiReady = signal(false);
 export const hasErrors = computed(() => errors.value.length > 0);
 export const hasParameters = computed(() => currentParameters.value.length > 0);
 
-export const parameters = computed(() => {
-    const params = currentParameters.value.map(param => ({
-        ...param,
-        value: parametersMap.value.get(param.index) ?? param.value
-    }));
-    console.log('parameters computed', params);
-    return params;
-});
-
 export const placeholderMessage = computed(() => {
-    console.log('placeholderMessage computed', currentCode.value, currentParameters.value);
+    Logger.log('placeholderMessage computed', currentCode.value, currentParameters.value);
 
     if (!currentCode.value) {
         return 'Waiting for code...';
@@ -100,7 +101,7 @@ function updateParameterValue(identifier, value, type = 'key') {
  */
 export const actions = {
     currentParameters: (parameters) => {
-        console.log('actions.currentParameters', parameters);
+        Logger.log('actions.currentParameters', parameters);
         currentParameters.value = parameters;
     },
     updateParameterValueByKey: (key, value) => {
@@ -116,16 +117,32 @@ export const actions = {
     clearErrors: () => errors.value = [],
 };
 
-// Code generation signals
-export const codeAst = computed(() => {
-  if (!currentCode.value || !currentEvalRange.value) return null;
-  const code = window.cm.getRange(currentEvalRange.value.start, currentEvalRange.value.end);
-  return Parser.parse(code, { locations: true, ecmaVersion: 'latest' });
+export const cmCodeRange = computed(() => {
+    if (!currentEvalRange.value) return null;
+    const code = window.cm.getRange(currentEvalRange.value.start, currentEvalRange.value.end);
+    return code;
 });
 
+// Code generation signals
+export const codeAst = computed(() => {
+  if (!currentCode.value || !currentEvalRange.value || !cmCodeRange.value) return null;
+  try {
+    return Parser.parse(cmCodeRange.value, { locations: true, ecmaVersion: 'latest' });
+  } catch (error) {
+    Logger.error('Error parsing code:', error);
+    return null;
+  }
+});
+
+// These signals need the codeFormatter instance to work
+// They should be initialized after we have the formatter
+let _codeFormatter = null;
+export function initializeCodeSignals(formatter) {
+  _codeFormatter = formatter;
+}
+
 export const arrowFunctionCode = computed(() => {
-  if (!codeAst.value || !parameters.value.length) return null;
-  const code = window.cm.getRange(currentEvalRange.value.start, currentEvalRange.value.end);
+  if (!codeAst.value || !parameters.value.length || !_codeFormatter) return null;
   
   // Create map of all parameters as arrow functions
   const updates = new Map();
@@ -133,20 +150,18 @@ export const arrowFunctionCode = computed(() => {
     updates.set(param.index, `() => ${param.key}`);
   }
   
-  return codeFormatter.generateCode(codeAst.value, code, updates);
+  return _codeFormatter.generateCode(codeAst.value, cmCodeRange.value, updates);
 });
 
 export const variableAssignments = computed(() => {
   if (!parameters.value.length) return '';
-  // Use parameters.value since it already has the updated values
   return parameters.value
     .map(param => `${param.key} = ${param.value}`)
     .join(';\n');
 });
 
 export const staticCode = computed(() => {
-  if (!codeAst.value) return null;
-  const code = window.cm.getRange(currentEvalRange.value.start, currentEvalRange.value.end);
+  if (!codeAst.value || !_codeFormatter || !parameters.value.length) return null;
   
   // Create map using parameters which already has updated values
   const updates = new Map();
@@ -154,14 +169,10 @@ export const staticCode = computed(() => {
     updates.set(param.index, param.value);
   }
   
-  return codeFormatter.generateCode(codeAst.value, code, updates);
+  return _codeFormatter.generateCode(codeAst.value, cmCodeRange.value, updates);
 });
 
-export const hasCodeEvaled = signal(false);
 
 export const codeToEval = computed(() => {
-  if (!hasCodeEvaled.value && arrowFunctionCode.value) {
     return `${variableAssignments.value};\n${arrowFunctionCode.value}`;
-  }
-  return `${variableAssignments.value}`;
-}); 
+});

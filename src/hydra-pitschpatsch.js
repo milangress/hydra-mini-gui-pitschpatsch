@@ -6,6 +6,7 @@ import { hookIntoEval, hookIntoHydraEditor } from './editor/editor-integration.j
 import { GUIManager } from './gui/core/gui-manager.js';
 import { CodeValueManager } from './editor/code-value-manager.js';
 import { Logger } from './utils/logger.js';
+import { initializeCodeSignals } from './state/signals.js';
 
 export class HydraMiniGUI {
     constructor() {
@@ -20,6 +21,10 @@ export class HydraMiniGUI {
         this._updateTimeout = null;
         this.guiManager = new GUIManager(this.hydra);
         this.codeManager = new CodeValueManager(this.hydra);
+        
+        // Initialize code signals with the formatter from codeManager
+        initializeCodeSignals(this.codeManager._codeFormatter);
+        
         this.guiManager._updateGUI();
         
         hookIntoEval.call(this);
