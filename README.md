@@ -40,21 +40,6 @@ Try it live: <https://hydra-gui.milan.place>
 - 📝 Keeps your code clean and readable
 - 🎯 Makes precise adjustments a breeze
 
-## A Little Example 🌈
-
-```js
-osc(40,0.1,0.8)
-  .rotate(0.5)
-  .out()
-```
-
-This creates magical sliders for:
-
-- `40` (freqency)
-- `0.1` (sync )
-- `0.8` (offset)
-- `0.5` (rotation)
-
-## to be continued
+![Demo2](doc/demo2.webm)
 
 This is an experimental plugin and your a very welome to participate in this project.
