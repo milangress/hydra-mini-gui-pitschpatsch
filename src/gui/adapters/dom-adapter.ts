@@ -1,10 +1,15 @@
-import { DEFAULT_GUI_STYLES } from '../core/types/styles.js';
-import { DraggablePane } from '../core/draggable-pane.js';
+import { DEFAULT_GUI_STYLES } from '../core/types/styles';
+import { DraggablePane } from '../core/draggable-pane';
+import { ElementProperties, Layout, CustomStyles } from './dom-types';
 
 /**
  * Handles all DOM-specific operations
  */
 export class DOMAdapter {
+    private container: HTMLElement | null;
+    private styleElement: HTMLStyleElement | null;
+    private draggablePane: DraggablePane | null;
+
     constructor() {
         this.container = null;
         this.styleElement = null;
@@ -14,10 +19,10 @@ export class DOMAdapter {
     /**
      * Creates a DOM element with given properties
      */
-    createElement(type, properties = {}) {
+    createElement<T extends HTMLElement>(type: string, properties: ElementProperties = {}): T | null {
         if (typeof document === 'undefined') return null;
 
-        const element = document.createElement(type);
+        const element = document.createElement(type) as T;
         if (properties.style) {
             Object.assign(element.style, properties.style);
         }
@@ -35,7 +40,7 @@ export class DOMAdapter {
     /**
      * Mounts the GUI container to the DOM
      */
-    mountContainer(container) {
+    mountContainer(container: HTMLElement): void {
         if (typeof document === 'undefined') return;
 
         const editorContainer = document.getElementById('editor-container');
@@ -49,7 +54,7 @@ export class DOMAdapter {
     /**
      * Removes existing GUI from the DOM
      */
-    removeExistingGUI() {
+    removeExistingGUI(): void {
         if (typeof document === 'undefined') return;
         
         const existingGui = document.getElementById('hydra-mini-gui');
@@ -61,14 +66,14 @@ export class DOMAdapter {
     /**
      * Creates and mounts the GUI container
      */
-    setupContainer(layout) {
+    setupContainer(layout: Layout): HTMLElement | null {
         if (typeof document === 'undefined') return null;
 
         this.removeExistingGUI();
 
-        this.container = this.createElement('div', {
+        this.container = this.createElement<HTMLDivElement>('div', {
             style: {
-                zIndex: layout.zIndex,
+                zIndex: layout.zIndex.toString(),
                 position: 'fixed',
                 ...layout.position
             },
@@ -77,6 +82,8 @@ export class DOMAdapter {
                 id: 'hydra-mini-gui'
             }
         });
+
+        if (!this.container) return null;
 
         this.mountContainer(this.container);
         this.applyStyles();
@@ -90,18 +97,20 @@ export class DOMAdapter {
     /**
      * Applies styles to the document
      */
-    applyStyles(customStyles = {}) {
+    applyStyles(customStyles: CustomStyles = {}): void {
         if (typeof document === 'undefined') return;
         
         // Remove existing styles
         this.removeStyles();
 
         // Create style element
-        this.styleElement = this.createElement('style', {
+        this.styleElement = this.createElement<HTMLStyleElement>('style', {
             attributes: {
                 id: 'hydra-mini-gui-styles'
             }
         });
+
+        if (!this.styleElement) return;
 
         // Combine default and custom styles
         const styles = { ...DEFAULT_GUI_STYLES, ...customStyles };
@@ -114,7 +123,7 @@ export class DOMAdapter {
     /**
      * Removes styles from the document
      */
-    removeStyles() {
+    removeStyles(): void {
         if (typeof document === 'undefined') return;
         
         const existingStyle = document.getElementById('hydra-mini-gui-styles');
@@ -127,7 +136,7 @@ export class DOMAdapter {
     /**
      * Cleans up DOM elements
      */
-    cleanup() {
+    cleanup(): void {
         if (this.draggablePane) {
             this.draggablePane.cleanup();
             this.draggablePane = null;

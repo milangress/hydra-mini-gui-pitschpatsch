@@ -6,6 +6,8 @@ import { Logger } from '../../../utils/logger';
 import { BaseControl } from './base-control';
 import { ControlParameter } from '../types/controls';
 import { ParameterGroup } from '../types/parameter-groups';
+import { TweakpaneAdapter } from '../../adapters/tweakpane-adapter';
+import { TweakpaneFolder } from '../../adapters/types';
 
 type ControlClass = typeof BaseControl;
 
@@ -25,7 +27,11 @@ export class ControlFactory {
     /**
      * Creates controls for a set of parameters
      */
-    static createControls(folder: any, params: ControlParameter[], tweakpaneAdapter: any) {
+    static createControls(
+        folder: TweakpaneFolder, 
+        params: ControlParameter[], 
+        tweakpaneAdapter: TweakpaneAdapter
+    ): void {
         const groups = ParameterGroupDetector.detectGroups(params);
 
         groups.forEach(group => {
@@ -36,7 +42,11 @@ export class ControlFactory {
     /**
      * Creates a single non-group control (like NumberControl)
      */
-    private static createSingleControl(param: ControlParameter, folder: any, tweakpaneAdapter: any) {
+    private static createSingleControl(
+        param: ControlParameter, 
+        folder: TweakpaneFolder, 
+        tweakpaneAdapter: TweakpaneAdapter
+    ): void {
         const config = {
             name: param.paramName,
             options: { label: param.paramName },
@@ -45,13 +55,18 @@ export class ControlFactory {
             parameter: param
         };
 
-        new NumberControl(config);
+        const control = new NumberControl(config);
+        control.createBinding(folder, tweakpaneAdapter);
     }
 
     /**
      * Creates a group control (like ColorControl or PointControl)
      */
-    private static createGroupControl(group: ParameterGroup, folder: any, tweakpaneAdapter: any) {
+    private static createGroupControl(
+        group: ParameterGroup, 
+        folder: TweakpaneFolder, 
+        tweakpaneAdapter: TweakpaneAdapter
+    ): void {
         const config = {
             name: group.params.map(p => p.paramName).join(''),
             options: {
@@ -60,16 +75,20 @@ export class ControlFactory {
             params: group.params
         };
 
-        group.type === 'color' 
+        const control = group.type === 'color' 
             ? new ColorControl(config as any) 
             : new PointControl(config as any);
-
+        control.createBinding(folder, tweakpaneAdapter);
     }
 
     /**
      * Creates a control for a parameter group
      */
-    static createControlForGroup(group: ParameterGroup, folder: any, tweakpaneAdapter: any) {
+    static createControlForGroup(
+        group: ParameterGroup, 
+        folder: TweakpaneFolder, 
+        tweakpaneAdapter: TweakpaneAdapter
+    ): void {
         Logger.log('ControlFactory createControlForGroup - group:', group);
         
         if (group.type === 'color' || group.type === 'point') {
@@ -78,20 +97,5 @@ export class ControlFactory {
             this.createSingleControl(group.params[0], folder, tweakpaneAdapter);
         }
     }
-
-    /**
-     * Finds the appropriate control class for a parameter
-     */
-    static findControlClass(param: ControlParameter): ControlClass | undefined {
-        return this.controls.find(control => control.canHandle(param));
-    }
-
-    /**
-     * Registers a new control type
-     */
-    static registerControl(ControlClass: ControlClass): void {
-        if (!this.controls.includes(ControlClass)) {
-            this.controls.push(ControlClass);
-        }
-    }
+    
 } 

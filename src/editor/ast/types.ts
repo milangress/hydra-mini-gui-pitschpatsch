@@ -33,6 +33,7 @@ export interface ValuePosition {
     lineNumber: number;
     ch: number;
     parameterIndex?: number;
+    paramCount: number;
 }
 
 export interface FunctionInfo {
