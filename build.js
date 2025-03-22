@@ -18,9 +18,20 @@ const footer = `//# sourceMappingURL=http://${coolifyUrl}/hydra-pitschpatsch.js.
 
 export async function runBuild() {
     try {
+
+        const htmlBuild = await Bun.build({
+            entrypoints: ["./index.html"],
+            outdir: "./dist",
+            naming: {
+                entry: "index.html",
+            },
+            env: 'inline',
+            sourcemap: "linked",
+            minify: false,
+        });
         // Build the JS bundle
         const result = await build({
-            entrypoints: ["hydra-pitschpatsch.js", "./index.html"],
+            entrypoints: ["hydra-pitschpatsch.js"],
             outdir: "./dist",
             sourcemap: "linked",
             minify: false,
@@ -29,7 +40,6 @@ export async function runBuild() {
                 __PKG_VERSION__: JSON.stringify(pkg.version),
                 __PKG_NAME__: JSON.stringify(pkg.name)
             },
-            env: 'inline',
             banner,
             footer,
         });
@@ -39,6 +49,9 @@ export async function runBuild() {
             process.exit(1);
         }
         for (const output of result.outputs) {
+            console.log(output.path);
+        }
+        for (const output of htmlBuild.outputs) {
             console.log(output.path);
         }
 
