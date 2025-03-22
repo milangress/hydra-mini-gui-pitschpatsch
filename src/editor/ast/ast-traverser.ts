@@ -21,6 +21,8 @@ export class ASTTraverser {
     private currentIndex = 0;
     private availableOutputs: string[];
     private availableSources: string[];
+    private code: string | null = null;
+    private matches: HydraParameter[] = [];
 
     /**
      * Creates a new ASTTraverser instance
@@ -112,80 +114,119 @@ export class ASTTraverser {
     findValues(ast: Node | null, code: string | null): HydraParameter[] {
         if (!ast || !code) return [];
 
-        const matches: HydraParameter[] = [];
+        this.code = code;
+        this.matches = [];
+
         try {
             const traveler = makeTraveler({
-                go: function(this: any, node: Node, state: TraversalState) {
-                    if (!this.isValidNode(node)) return;
+                // Handle numeric literals
+                Literal: (node: Node, state: TraversalState) => {
+                    if (!isNumericLiteral(node)) return;
                     
-                    try {
-                        this.processNode(node, state, matches, code);
-                    } catch (error) {
-                        if (error instanceof HydraKeyGenerationError) {
-                            console.error('Key generation failed:', error.message, 'Context:', error.context);
-                        } else {
-                            throw new HydraTraversalError(
-                                error instanceof Error ? error.message : 'Unknown error processing node',
-                                node
-                            );
-                        }
-                        return; // Skip this node but continue traversal
-                    }
+                    const line = getNodeLine(node, this.code!);
+                    if (shouldSkipLine(line)) return;
 
-                    // Traverse children with updated parent chain
-                    const oldParents = state.parents || [];
-                    state.parents = [...oldParents, node];
-                    
-                    // Use the traveler's built-in traversal methods
-                    if (node.type === 'Program') {
-                        const program = node as unknown as { body: Node[] };
-                        program.body.forEach(child => this.super.go.call(this, child, state));
+                    try {
+                        this.processNumericLiteral(node as Literal, state, line ?? '');
+                    } catch (error) {
+                        this.handleNodeError(error, node, 'numeric literal');
                     }
-                    else if (Array.isArray(node)) {
-                        node.forEach(child => this.super.go.call(this, child, state));
+                },
+
+                // Handle identifiers (sources and outputs)
+                Identifier: (node: Node, state: TraversalState) => {
+                    const line = getNodeLine(node, this.code!);
+                    if (shouldSkipLine(line)) return;
+
+                    try {
+                        this.processIdentifier(node as Identifier, state, line ?? '');
+                    } catch (error) {
+                        this.handleNodeError(error, node, 'identifier');
                     }
-                    else {
-                        const keys = Object.keys(node);
-                        for (let i = 0; i < keys.length; i++) {
-                            const key = keys[i];
-                            const value = (node as any)[key];
-                            if (value && typeof value === 'object') {
-                                this.super.go.call(this, value, state);
-                            }
-                        }
-                    }
-                    
-                    state.parents = oldParents;
-                }.bind(this)
+                }
             });
 
             traveler.go(ast, { parents: [], hydra: this.hydra });
         } catch (error) {
-            if (error instanceof HydraKeyGenerationError) {
-                console.error('Key generation failed:', error.message, 'Context:', error.context);
-            } else if (error instanceof HydraTraversalError) {
-                console.error('Error traversing AST:', error.message, 'at node:', error.node);
-            } else {
-                console.error('Unexpected error during AST traversal:', error);
-            }
+            this.handleTraversalError(error, ast);
         }
-        return matches;
+
+        return this.matches;
     }
 
-    private isValidNode(node: Node | null): node is Node {
-        return node !== null && typeof node === 'object';
-    }
-
-    private processNode(node: Node, state: TraversalState, matches: HydraParameter[], code: string) {
-        const line = getNodeLine(node, code);
-        if (shouldSkipLine(line)) return;
-
-        if (isNumericLiteral(node)) {
-            this.processNumericLiteral(node, state, matches, code, line ?? '');
-        } else if (isIdentifier(node)) {
-            this.processIdentifier(node, state, matches, code, line ?? '');
+    private handleNodeError(error: unknown, node: Node, context: string) {
+        if (error instanceof HydraKeyGenerationError) {
+            console.error('Key generation failed:', error.message, 'Context:', error.context);
+        } else {
+            const nodeLocation = node.loc ? 
+                `at line ${node.loc.start.line}, column ${node.loc.start.column}` : 
+                'at unknown location';
+            
+            throw new HydraTraversalError(
+                `Error processing ${context} ${nodeLocation}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                node
+            );
         }
     }
+
+    private handleTraversalError(error: unknown, ast: Node) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorContext = {
+            nodeType: ast.type,
+            location: ast.loc ? 
+                `line ${ast.loc.start.line}, column ${ast.loc.start.column}` : 
+                'unknown location'
+        };
+
+        console.error('AST Traversal failed:', errorMessage, 'Context:', errorContext);
+    }
+
+    private processNumericLiteral(node: Literal, state: TraversalState, line: string) {
+        const lineStart = (node.loc?.start.line ?? 1) - 1;
+        const parent = state.parents[state.parents.length - 1];
+        const nodeToUse = parent?.type === 'UnaryExpression' ? parent : node;
+        
+        const { functionInfo, paramCount } = this.getNodeContext(nodeToUse, state, line);
+        if (!functionInfo) return;
+
+        let value = node.value as number;
+        let startColumn = node.loc?.start.column ?? 0;
+        let length = (node.loc?.end.column ?? 0) - startColumn;
+
+        if (parent?.type === 'UnaryExpression' && (parent as UnaryExpression).operator === '-') {
+            value = -value;
+            startColumn = parent.loc?.start.column ?? 0;
+            length = (parent.loc?.end.column ?? 0) - startColumn;
+        }
+
+        this.matches.push({
+            ...this.createBaseParameter(node, functionInfo, paramCount, lineStart),
+            value,
+            ch: startColumn,
+            length,
+            type: 'number'
+        } as HydraParameter);
+    }
+
+    private processIdentifier(node: Identifier, state: TraversalState, line: string) {
+        const name = node.name;
+        const isOutput = this.availableOutputs.includes(name);
+        const isSource = this.availableSources.includes(name);
+        
+        if (!isOutput && !isSource) return;
+
+        const lineStart = (node.loc?.start.line ?? 1) - 1;
+        const { functionInfo, paramCount } = this.getNodeContext(node, state, line);
+        if (!functionInfo) return;
+
+        this.matches.push({
+            ...this.createBaseParameter(node, functionInfo, paramCount, lineStart),
+            value: name,
+            type: isOutput ? 'output' : 'source',
+            options: isOutput ? this.availableOutputs : this.availableSources
+        } as HydraParameter);
+    }
+
 
     
 
@@ -263,63 +304,5 @@ export class ASTTraverser {
                 parameterIndex: paramCount
             })
         };
-    }
-
-    private processNumericLiteral(
-        node: Literal,
-        state: TraversalState,
-        matches: HydraParameter[],
-        code: string,
-        line: string
-    ) {
-        const lineStart = (node.loc?.start.line ?? 1) - 1;
-        const parent = state.parents[state.parents.length - 1];
-        const nodeToUse = parent?.type === 'UnaryExpression' ? parent : node;
-        
-        const { functionInfo, paramCount } = this.getNodeContext(nodeToUse, state, line);
-        if (!functionInfo) return;
-
-        let value = node.value as number;
-        let startColumn = node.loc?.start.column ?? 0;
-        let length = (node.loc?.end.column ?? 0) - startColumn;
-
-        if (parent?.type === 'UnaryExpression' && (parent as UnaryExpression).operator === '-') {
-            value = -value;
-            startColumn = parent.loc?.start.column ?? 0;
-            length = (parent.loc?.end.column ?? 0) - startColumn;
-        }
-
-        matches.push({
-            ...this.createBaseParameter(node, functionInfo, paramCount, lineStart),
-            value,
-            ch: startColumn,
-            length,
-            type: 'number'
-        } as HydraParameter);
-    }
-
-    private processIdentifier(
-        node: Identifier,
-        state: TraversalState,
-        matches: HydraParameter[],
-        code: string,
-        line: string
-    ) {
-        const name = node.name;
-        const isOutput = this.availableOutputs.includes(name);
-        const isSource = this.availableSources.includes(name);
-        
-        if (!isOutput && !isSource) return;
-
-        const lineStart = (node.loc?.start.line ?? 1) - 1;
-        const { functionInfo, paramCount } = this.getNodeContext(node, state, line);
-        if (!functionInfo) return;
-
-        matches.push({
-            ...this.createBaseParameter(node, functionInfo, paramCount, lineStart),
-            value: name,
-            type: isOutput ? 'output' : 'source',
-            options: isOutput ? this.availableOutputs : this.availableSources
-        } as HydraParameter);
     }
 } 
