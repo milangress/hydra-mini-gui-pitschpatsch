@@ -13,6 +13,8 @@ export class DraggablePane {
     private initialX: number;
     private initialY: number;
     private dragOverlay: HTMLElement | null;
+    private dragStartTime: number;
+    private hasMoved: boolean;
 
     constructor(container: HTMLElement) {
         this.container = container;
@@ -23,11 +25,14 @@ export class DraggablePane {
         this.startY = 0;
         this.initialX = 0;
         this.initialY = 0;
+        this.dragStartTime = 0;
+        this.hasMoved = false;
 
         // Bind methods
         this.onDragStart = this.onDragStart.bind(this);
         this.onDrag = this.onDrag.bind(this);
         this.onDragEnd = this.onDragEnd.bind(this);
+        this.onClick = this.onClick.bind(this);
         
         // Wait a bit for Tweakpane to be initialized
         setTimeout(() => this.init(), 1000);
@@ -78,6 +83,20 @@ export class DraggablePane {
         // Add event listeners
         this.dragBar.addEventListener('mousedown', this.onDragStart);
         this.dragBar.addEventListener('touchstart', this.onDragStart, { passive: false });
+        this.dragBar.addEventListener('click', this.onClick, true);
+    }
+
+    /**
+     * Handle click events
+     */
+    private onClick(e: Event): void {
+        // Only prevent the click if we've been dragging
+        if (this.hasMoved) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            this.hasMoved = false;
+        }
     }
 
     /**
@@ -87,6 +106,8 @@ export class DraggablePane {
         e.preventDefault();
         e.stopPropagation();
         this.isDragging = true;
+        this.hasMoved = false;
+        this.dragStartTime = Date.now();
         
         if (!this.dragBar || !this.dragOverlay) return;
         
@@ -152,6 +173,11 @@ export class DraggablePane {
         const deltaX = currentX - this.startX;
         const deltaY = currentY - this.startY;
         
+        // Mark as moved if we've dragged more than 3 pixels in any direction
+        if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
+            this.hasMoved = true;
+        }
+        
         // Update container position
         const newX = this.initialX + deltaX;
         const newY = this.initialY + deltaY;
@@ -206,6 +232,7 @@ export class DraggablePane {
         if (this.dragBar) {
             this.dragBar.removeEventListener('mousedown', this.onDragStart);
             this.dragBar.removeEventListener('touchstart', this.onDragStart);
+            this.dragBar.removeEventListener('click', this.onClick, true);
             this.dragBar.classList.remove('draggable');
         }
         if (this.dragOverlay) {
