@@ -1,7 +1,14 @@
 import { makeTraveler } from 'astravel';
-import { Node, CallExpression, Identifier, MemberExpression, Literal, UnaryExpression } from 'acorn';
+import type { Node, CallExpression, Identifier, MemberExpression, Literal, UnaryExpression } from 'acorn';
 import { extractFunctionNameFromCode, countParametersBeforePosition } from '../../utils/code-utils';
-import { HydraInstance, FunctionInfo, HydraParameter, TraversalState } from './types';
+import type { HydraInstance, FunctionInfo, HydraParameter, TraversalState } from './types';
+
+class HydraTraversalError extends Error {
+    constructor(message: string, public node?: Node) {
+        super(message);
+        this.name = 'HydraTraversalError';
+    }
+}
 
 /**
  * Traverses Abstract Syntax Trees (AST) of Hydra code to analyze and extract information
@@ -16,6 +23,9 @@ import { HydraInstance, FunctionInfo, HydraParameter, TraversalState } from './t
  */
 export class ASTTraverser {
     private hydra: HydraInstance;
+    private currentIndex = 0;
+    private availableOutputs: string[];
+    private availableSources: string[];
 
     /**
      * Creates a new ASTTraverser instance
@@ -23,6 +33,8 @@ export class ASTTraverser {
      */
     constructor(hydra: HydraInstance) {
         this.hydra = hydra;
+        this.availableOutputs = Array.from({ length: 4 }, (_, i) => this.hydra?.o?.[i]?.label ?? `o${i}`);
+        this.availableSources = Array.from({ length: 4 }, (_, i) => this.hydra?.s?.[i]?.label ?? `s${i}`);
     }
 
     /**
@@ -101,19 +113,19 @@ export class ASTTraverser {
      * - osc(10, 0.5) -> osc_freq_line1_pos3_value, osc_sync_line1_pos7_value
      * - osc(10).rotate(6.22) -> osc_freq_line1_pos3_value, rotate_angle_line1_pos12_value
      */
-    private _generateKey(HydraParameter: HydraParameter): string {
-        const paramPart = HydraParameter.paramName ? 
-            `_${HydraParameter.paramName}` : 
-            `_param${HydraParameter.parameterIndex}`;
-            
-        return `${HydraParameter.functionName}${paramPart}_line${HydraParameter.lineNumber}_pos${HydraParameter.ch}_value`;
+    private _generateKey(params: Partial<HydraParameter>): string {
+        const paramPart = params.paramName ?? `param${params.parameterIndex}`;
+        const functionName = params.functionName ?? 'unknown';
+        const lineNumber = params.lineNumber ?? 0;
+        const ch = params.ch ?? 0;
+        return `${functionName}_${paramPart}_line${lineNumber}_pos${ch}_value`;
     }
 
-    private _generateFunctionId(HydraParameter: HydraParameter): string {
-        const position = 'functionStartCh' in HydraParameter 
-            ? HydraParameter.functionStartCh 
-            : HydraParameter.ch;
-        return `${HydraParameter.functionName}_line${HydraParameter.lineNumber}_pos${position}`;
+    private _generateFunctionId(params: Partial<HydraParameter>): string {
+        const position = params.functionStartCh ?? params.ch ?? 0;
+        const functionName = params.functionName ?? 'unknown';
+        const lineNumber = params.lineNumber ?? 0;
+        return `${functionName}_line${lineNumber}_pos${position}`;
     }
 
     /**
@@ -128,192 +140,222 @@ export class ASTTraverser {
         if (!ast || !code) return [];
 
         const matches: HydraParameter[] = [];
-        let currentIndex = 0;
-
         try {
-            // Get available sources and outputs from hydra
-            const availableOutputs = Array.from({ length: 4 }, (_, i) => this.hydra?.o?.[i]?.label ?? `o${i}`);
-            const availableSources = Array.from({ length: 4 }, (_, i) => this.hydra?.s?.[i]?.label ?? `s${i}`);
-
-            // Bind the instance methods we need in the traveler
-            const getFunctionName = this._getFunctionNameFromAST.bind(this);
-            const getParamCount = this._getParameterCount.bind(this);
-            const generateKey = this._generateKey.bind(this);
-            const hydra = this.hydra;
-            const generateFunctionId = this._generateFunctionId.bind(this);
             const traveler = makeTraveler({
-                go: function(node: Node, state: TraversalState) {
-                    if (!node || typeof node !== 'object') return;
-
-                    // Handle numeric literals
-                    if (node.type === 'Literal' && typeof (node as Literal).value === 'number') {
-                        const line = code.split('\n')[(node.loc?.start.line ?? 1) - 1];
-                        // Skip if line contains loadScript or await loadScript
-                        if (!line?.includes('loadScript') && !line?.includes('await loadScript')) {
-                            const lineStart = (node.loc?.start.line ?? 1) - 1;
-                            
-                            // Check if this number is part of a UnaryExpression
-                            const parent = state.parents[state.parents.length - 1];
-                            const nodeToUse = parent?.type === 'UnaryExpression' ? parent : node;
-                            
-                            // Try to get function name from AST first
-                            let functionInfo = getFunctionName(nodeToUse, state.parents ?? []);
-                            let paramCount = getParamCount(nodeToUse, state.parents ?? []);
-
-                            console.log('Function info', functionInfo);
-                            console.log('Param count', paramCount);
-
-                            // Fall back to regex if AST method fails
-                            if (!functionInfo && line) {
-                                const beforeContent = line.substring(0, node.loc?.start.column ?? 0);
-                                const name = extractFunctionNameFromCode(beforeContent);
-                                if (name) {
-                                    functionInfo = {
-                                        name,
-                                        startCh: beforeContent.lastIndexOf(name)
-                                    };
-                                }
-                                if (!paramCount) {
-                                    const lastDotIndex = beforeContent.lastIndexOf('.');
-                                    if (lastDotIndex !== -1) {
-                                        const afterFunction = beforeContent.slice(lastDotIndex + 1);
-                                        paramCount = countParametersBeforePosition(afterFunction);
-                                    }
-                                }
-                            }
-
-                            // Only add if we found a valid function context
-                            if (functionInfo) {
-                                // Get transform info for parameter name
-                                const transform = state.hydra?.generator?.glslTransforms?.[functionInfo.name];
-                                console.log('Hydra transform', transform);
-                                const paramInfo = transform?.inputs?.[paramCount];
-                                const paramName = paramInfo?.name ?? `val${paramCount + 1}`;
-                                const paramType = paramInfo?.type;
-                                const paramDefault = paramInfo?.default;
-
-                                // Check for unary minus operator
-                                let value = (node as Literal).value as number;
-                                let startColumn = node.loc?.start.column ?? 0;
-                                let length = (node.loc?.end.column ?? 0) - startColumn;
-                                
-                                // If there's a unary minus before this number
-                                if (parent?.type === 'UnaryExpression' && (parent as UnaryExpression).operator === '-') {
-                                    value = -value;
-                                    startColumn = parent.loc?.start.column ?? 0;
-                                    length = (parent.loc?.end.column ?? 0) - startColumn;
-                                }
-
-                                console.log('functioninfo', functionInfo);
-                                
-                                matches.push({
-                                    value,
-                                    lineNumber: lineStart,
-                                    ch: startColumn,
-                                    length,
-                                    index: currentIndex++,
-                                    functionName: functionInfo.name,
-                                    functionStartCh: functionInfo.startCh,
-                                    functionId: generateFunctionId(functionInfo),
-                                    parameterIndex: paramCount,
-                                    paramName,
-                                    paramType,
-                                    paramDefault,
-                                    paramCount,
-                                    type: 'number',
-                                    key: generateKey({
-                                        functionName: functionInfo.name,
-                                        paramName,
-                                        lineNumber: lineStart,
-                                        ch: startColumn,
-                                        parameterIndex: paramCount
-                                    })
-                                });
-                            }
-                        }
-                    }
-                    // Handle source/output references
-                    else if (node.type === 'Identifier') {
-                        const name = (node as Identifier).name;
-                        const isOutput = availableOutputs.includes(name);
-                        const isSource = availableSources.includes(name);
-                        
-                        if (isOutput || isSource) {
-                            const lineStart = (node.loc?.start.line ?? 1) - 1;
-                            const line = code.split('\n')[lineStart];
-                            
-                            // Try to get function name from AST first
-                            let functionInfo = getFunctionName(node, state.parents ?? []);
-                            let paramCount = getParamCount(node, state.parents ?? []);
-
-                            // Fall back to regex if AST method fails
-                            if (!functionInfo && line) {
-                                const beforeContent = line.substring(0, node.loc?.start.column ?? 0);
-                                const name = extractFunctionNameFromCode(beforeContent);
-                                if (name) {
-                                    functionInfo = {
-                                        name,
-                                        startCh: beforeContent.lastIndexOf(name)
-                                    };
-                                }
-                                if (!paramCount) {
-                                    const lastDotIndex = beforeContent.lastIndexOf('.');
-                                    if (lastDotIndex !== -1) {
-                                        const afterFunction = beforeContent.slice(lastDotIndex + 1);
-                                        paramCount = countParametersBeforePosition(afterFunction);
-                                    }
-                                }
-                            }
-
-                            // Get transform info for parameter name
-                            const transform = state.hydra?.generator?.glslTransforms?.[functionInfo?.name];
-                            const paramInfo = transform?.inputs?.[paramCount];
-                            const paramName = paramInfo?.name ?? `val${paramCount + 1}`;
-                            const paramType = paramInfo?.type;
-                            const paramDefault = paramInfo?.default;
-
-                            matches.push({
-                                value: name,
-                                lineNumber: lineStart,
-                                ch: node.loc?.start.column ?? 0,
-                                length: (node.loc?.end.column ?? 0) - (node.loc?.start.column ?? 0),
-                                index: currentIndex++,
-                                functionName: functionInfo?.name,
-                                functionStartCh: functionInfo?.startCh,
-                                functionId: generateFunctionId(functionInfo),
-                                parameterIndex: paramCount,
-                                paramName,
-                                paramType,
-                                paramDefault,
-                                paramCount,
-                                type: isOutput ? 'output' : 'source',
-                                options: isOutput ? availableOutputs : availableSources,
-                                key: generateKey({
-                                    functionName: functionInfo?.name ?? '',
-                                    paramName,
-                                    lineNumber: lineStart,
-                                    ch: node.loc?.start.column ?? 0,
-                                    parameterIndex: paramCount
-                                })
-                            });
-                        }
+                go: function(this: any, node: Node, state: TraversalState) {
+                    if (!this.isValidNode(node)) return;
+                    
+                    try {
+                        this.processNode(node, state, matches, code);
+                    } catch (error) {
+                        throw new HydraTraversalError(
+                            error instanceof Error ? error.message : 'Unknown error processing node',
+                            node
+                        );
                     }
 
-                    // Traverse children
+                    // Traverse children with updated parent chain
                     const oldParents = state.parents || [];
                     state.parents = [...oldParents, node];
-                    this.super.go.call(this, node, state);
+                    
+                    // Use the traveler's built-in traversal
+                    if (node.type === 'Program') {
+                        // First cast to unknown to avoid type checking, then to the expected shape
+                        const program = node as unknown as { body: Node[] };
+                        this.go(program.body, state);
+                    }
+                    else if (Array.isArray(node)) {
+                        node.forEach(child => this.go(child, state));
+                    }
+                    else {
+                        const keys = Object.keys(node);
+                        for (let i = 0; i < keys.length; i++) {
+                            const key = keys[i];
+                            const value = (node as any)[key];
+                            if (value && typeof value === 'object') {
+                                this.go(value, state);
+                            }
+                        }
+                    }
+                    
                     state.parents = oldParents;
-                }
+                }.bind(this)
             });
 
-            // Start traversal with initial state
-            traveler.go(ast, { parents: [], hydra });
-
+            traveler.go(ast, { parents: [], hydra: this.hydra });
         } catch (error) {
-            console.error('Error traversing AST:', error);
+            if (error instanceof HydraTraversalError) {
+                console.error('Error traversing AST:', error.message, 'at node:', error.node);
+            } else {
+                console.error('Unexpected error during AST traversal:', error);
+            }
+        }
+        return matches;
+    }
+
+    private isValidNode(node: Node | null): node is Node {
+        return node !== null && typeof node === 'object';
+    }
+
+    private processNode(node: Node, state: TraversalState, matches: HydraParameter[], code: string) {
+        const line = this.getNodeLine(node, code);
+        if (this.shouldSkipLine(line)) return;
+
+        if (this.isNumericLiteral(node)) {
+            this.processNumericLiteral(node, state, matches, code, line ?? '');
+        } else if (this.isIdentifier(node)) {
+            this.processIdentifier(node, state, matches, code, line ?? '');
+        }
+    }
+
+    private getNodeLine(node: Node, code: string): string | undefined {
+        const lineNumber = (node.loc?.start.line ?? 1) - 1;
+        return code.split('\n')[lineNumber];
+    }
+
+    private shouldSkipLine(line?: string): boolean {
+        return !line || line.includes('loadScript') || line.includes('await loadScript');
+    }
+
+    private isNumericLiteral(node: Node): node is Literal {
+        return node.type === 'Literal' && typeof (node as Literal).value === 'number';
+    }
+
+    private isIdentifier(node: Node): node is Identifier {
+        return node.type === 'Identifier';
+    }
+
+    private getNodeContext(node: Node, state: TraversalState, line: string): {
+        functionInfo: FunctionInfo | null;
+        paramCount: number;
+    } {
+        // Try AST-based extraction first
+        let functionInfo = this._getFunctionNameFromAST(node, state.parents ?? []);
+        let paramCount = this._getParameterCount(node, state.parents ?? []);
+
+        // Fall back to regex-based extraction if needed
+        if (!functionInfo && line) {
+            const beforeContent = line.substring(0, node.loc?.start.column ?? 0);
+            const name = extractFunctionNameFromCode(beforeContent);
+            if (name) {
+                functionInfo = {
+                    name,
+                    startCh: beforeContent.lastIndexOf(name)
+                };
+            }
+            if (!paramCount) {
+                const lastDotIndex = beforeContent.lastIndexOf('.');
+                if (lastDotIndex !== -1) {
+                    const afterFunction = beforeContent.slice(lastDotIndex + 1);
+                    paramCount = countParametersBeforePosition(afterFunction);
+                }
+            }
         }
 
-        return matches;
+        return { functionInfo, paramCount: paramCount ?? 0 };
+    }
+
+    private getParamMetadata(functionName: string, paramCount: number) {
+        const transform = this.hydra?.generator?.glslTransforms?.[functionName];
+        const paramInfo = transform?.inputs?.[paramCount];
+        return {
+            name: paramInfo?.name ?? `val${paramCount + 1}`,
+            type: paramInfo?.type ?? 'number',
+            default: paramInfo?.default
+        };
+    }
+
+    private createBaseParameter(
+        node: Node,
+        functionInfo: FunctionInfo,
+        paramCount: number,
+        lineStart: number
+    ): Partial<HydraParameter> {
+        const paramMeta = this.getParamMetadata(functionInfo.name, paramCount);
+        
+        return {
+            lineNumber: lineStart,
+            ch: node.loc?.start.column ?? 0,
+            length: (node.loc?.end.column ?? 0) - (node.loc?.start.column ?? 0),
+            index: this.currentIndex++,
+            functionName: functionInfo.name,
+            functionStartCh: functionInfo.startCh,
+            parameterIndex: paramCount,
+            paramName: paramMeta.name,
+            paramType: paramMeta.type,
+            paramDefault: paramMeta.default,
+            paramCount,
+            key: this._generateKey({
+                functionName: functionInfo.name,
+                paramName: paramMeta.name,
+                lineNumber: lineStart,
+                ch: node.loc?.start.column ?? 0,
+                parameterIndex: paramCount
+            }),
+            functionId: this._generateFunctionId({
+                functionName: functionInfo.name,
+                lineNumber: lineStart,
+                ch: node.loc?.start.column ?? 0,
+                parameterIndex: paramCount
+            })
+        };
+    }
+
+    private processNumericLiteral(
+        node: Literal,
+        state: TraversalState,
+        matches: HydraParameter[],
+        code: string,
+        line: string
+    ) {
+        const lineStart = (node.loc?.start.line ?? 1) - 1;
+        const parent = state.parents[state.parents.length - 1];
+        const nodeToUse = parent?.type === 'UnaryExpression' ? parent : node;
+        
+        const { functionInfo, paramCount } = this.getNodeContext(nodeToUse, state, line);
+        if (!functionInfo) return;
+
+        let value = node.value as number;
+        let startColumn = node.loc?.start.column ?? 0;
+        let length = (node.loc?.end.column ?? 0) - startColumn;
+
+        if (parent?.type === 'UnaryExpression' && (parent as UnaryExpression).operator === '-') {
+            value = -value;
+            startColumn = parent.loc?.start.column ?? 0;
+            length = (parent.loc?.end.column ?? 0) - startColumn;
+        }
+
+        matches.push({
+            ...this.createBaseParameter(node, functionInfo, paramCount, lineStart),
+            value,
+            ch: startColumn,
+            length,
+            type: 'number'
+        } as HydraParameter);
+    }
+
+    private processIdentifier(
+        node: Identifier,
+        state: TraversalState,
+        matches: HydraParameter[],
+        code: string,
+        line: string
+    ) {
+        const name = node.name;
+        const isOutput = this.availableOutputs.includes(name);
+        const isSource = this.availableSources.includes(name);
+        
+        if (!isOutput && !isSource) return;
+
+        const lineStart = (node.loc?.start.line ?? 1) - 1;
+        const { functionInfo, paramCount } = this.getNodeContext(node, state, line);
+        if (!functionInfo) return;
+
+        matches.push({
+            ...this.createBaseParameter(node, functionInfo, paramCount, lineStart),
+            value: name,
+            type: isOutput ? 'output' : 'source',
+            options: isOutput ? this.availableOutputs : this.availableSources
+        } as HydraParameter);
     }
 } 
