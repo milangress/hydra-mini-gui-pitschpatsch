@@ -25,11 +25,18 @@ interface UndoGroup {
  */
 export class CodeValueManager {
     private hydra: HydraInstance;
-    private isUpdating: boolean;
+    private _isUpdating: boolean;
     private _updateTimeout: number | null;
     private _undoGroup: UndoGroup | null;
     private _astTraverser: ASTTraverser;
     private _codeFormatter: CodeFormatter;
+
+    /**
+     * Whether the manager is currently updating code
+     */
+    get isUpdating(): boolean {
+        return this._isUpdating;
+    }
 
     /**
      * Creates a new CodeValueManager instance
@@ -37,7 +44,7 @@ export class CodeValueManager {
      */
     constructor(hydra: HydraInstance) {
         this.hydra = hydra;
-        this.isUpdating = false;
+        this._isUpdating = false;
         this._updateTimeout = null;
         this._undoGroup = null;
         
@@ -89,7 +96,7 @@ export class CodeValueManager {
         if (!window.cm || !currentEvalRange.value) return;
 
         // Set flag before any updates
-        this.isUpdating = true;
+        this._isUpdating = true;
 
         if (this._updateTimeout !== null) {
             clearTimeout(this._updateTimeout);
@@ -121,7 +128,7 @@ export class CodeValueManager {
                     window.cm?.endOperation();
                     this._undoGroup = null;
                 }
-                this.isUpdating = false;
+                this._isUpdating = false;
             }
         }, 2000);
     }

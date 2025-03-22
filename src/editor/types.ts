@@ -41,15 +41,40 @@ export interface CodeMirrorRange {
     end: CodeMirrorPosition;
 }
 
+export interface CodeMirrorChange {
+    from: CodeMirrorPosition;
+    to: CodeMirrorPosition;
+    text: string[];
+    removed: string[];
+    origin: string;
+}
+
 export interface CodeMirrorEditor {
-    startOperation: () => void;
-    endOperation: () => void;
-    replaceRange: (text: string, from: CodeMirrorPosition, to: CodeMirrorPosition) => void;
-    getRange: (from: CodeMirrorPosition, to: CodeMirrorPosition) => string;
+    on(event: string, callback: (cm: CodeMirrorEditor, change?: CodeMirrorChange) => void): void;
+    getCursor(): CodeMirrorPosition;
+    getLine(line: number): string | undefined;
+    lineCount(): number;
+    getRange(from: CodeMirrorPosition, to: CodeMirrorPosition): string;
+    setOption(option: string, value: any): void;
+    startOperation(): void;
+    endOperation(): void;
+    replaceRange(text: string, from: CodeMirrorPosition, to: CodeMirrorPosition): void;
+    options: {
+        extraKeys?: Record<string, () => void>;
+    };
 }
 
 declare global {
     interface Window {
         cm?: CodeMirrorEditor;
+        eval: (code: string) => any;
     }
-} 
+}
+
+export interface CodeBlock {
+    start: CodeMirrorPosition;
+    end: CodeMirrorPosition;
+    text: string;
+}
+
+export type EvalAction = 'editor: eval line' | 'editor: eval block' | 'editor: eval all'; 

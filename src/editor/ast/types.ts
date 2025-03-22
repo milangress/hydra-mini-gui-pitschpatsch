@@ -24,6 +24,7 @@ export interface HydraInstance {
     o?: HydraOutput[];
     s?: HydraOutput[];
     generator?: HydraGenerator;
+    eval?: (code: string) => void;
 }
 
 export interface ValuePosition {
