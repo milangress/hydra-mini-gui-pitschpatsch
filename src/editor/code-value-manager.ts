@@ -11,9 +11,11 @@ import {
     currentEvalRange,
     codeToEval,
     staticCode,
+    parametersMap
 } from '../state/signals';
 import { HydraInstance } from './ast/types';
 import { ValueMatch } from './ast/types';
+import { ParameterUpdateDebouncer } from '../gui/utils/parameter-debouncer';
 
 interface UndoGroup {
     lastUpdate: number;
@@ -26,10 +28,10 @@ interface UndoGroup {
 export class CodeValueManager {
     private hydra: HydraInstance;
     private _isUpdating: boolean;
-    private _updateTimeout: number | null;
     private _undoGroup: UndoGroup | null;
     private _astTraverser: ASTTraverser;
     private _codeFormatter: CodeFormatter;
+    private _debouncer: ParameterUpdateDebouncer;
 
     /**
      * Whether the manager is currently updating code
@@ -45,11 +47,10 @@ export class CodeValueManager {
     constructor(hydra: HydraInstance) {
         this.hydra = hydra;
         this._isUpdating = false;
-        this._updateTimeout = null;
         this._undoGroup = null;
-        
         this._astTraverser = new ASTTraverser(hydra);
         this._codeFormatter = new CodeFormatter(hydra);
+        this._debouncer = new ParameterUpdateDebouncer();
 
         // Watch for parameter changes and evaluate code
         effect(() => {
@@ -98,39 +99,31 @@ export class CodeValueManager {
         // Set flag before any updates
         this._isUpdating = true;
 
-        if (this._updateTimeout !== null) {
-            clearTimeout(this._updateTimeout);
-        }
-        
-        this._updateTimeout = window.setTimeout(() => {
-            try {
-                const staticCodeValue = staticCode.value;
-                if (staticCodeValue && currentEvalRange.value) {
-                    if (!this._undoGroup) {
-                        window.cm?.startOperation();
-                        this._undoGroup = { lastUpdate: Date.now() };
+        this._debouncer.scheduleUpdate(
+            () => {
+                try {
+                    const staticCodeValue = staticCode.value;
+                    if (staticCodeValue && currentEvalRange.value) {
+                        if (!this._undoGroup) {
+                            window.cm?.startOperation();
+                            this._undoGroup = { lastUpdate: Date.now() };
+                        }
+                        window.cm?.replaceRange(staticCodeValue, currentEvalRange.value.start, currentEvalRange.value.end);
                     }
-                    window.cm?.replaceRange(staticCodeValue, currentEvalRange.value.start, currentEvalRange.value.end);
-                    
-                    // Re-evaluate on next frame to ensure UI is updated
-                    if (this.hydra?.eval) {
-                        requestAnimationFrame(() => {
-                            if (staticCodeValue && this.hydra?.eval) {
-                                this.hydra.eval(staticCodeValue);
-                            }
-                        });
+                } catch (error) {
+                    Logger.error('Error updating editor:', error);
+                } finally {
+                    if (this._undoGroup) {
+                        window.cm?.endOperation();
+                        this._undoGroup = null;
                     }
+                    this._isUpdating = false;
                 }
-            } catch (error) {
-                Logger.error('Error updating editor:', error);
-            } finally {
-                if (this._undoGroup) {
-                    window.cm?.endOperation();
-                    this._undoGroup = null;
-                }
-                this._isUpdating = false;
-            }
-        }, 2000);
+            },
+            parametersMap.value,
+            currentCode.value,
+            currentEvalRange.value
+        );
     }
 
     /**
